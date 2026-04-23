@@ -31,7 +31,7 @@ export default function FeedPage() {
           value={`${Math.max(...cappers.map((c) => c.winRate)).toFixed(0)}%`}
           accent
         />
-        <StatCard label="Per unlock" value="$5" />
+        <StatCard label="Per unlock" value="$5.00" />
       </div>
 
       {/* Sponsor banner */}
