@@ -128,6 +128,40 @@ drop policy if exists ads_read on public.advertisers;
 create policy ads_read on public.advertisers for select using (true);
 
 -- =========================================================================
+-- AUTO-CREATE PROFILE ON SIGN UP
+-- When a new auth.users row is inserted (via magic link, OAuth, etc.),
+-- automatically create a matching public.profiles row so the app has a
+-- handle + token balances to work with.
+-- =========================================================================
+create or replace function public.handle_new_user()
+returns trigger
+language plpgsql
+security definer set search_path = public
+as $$
+begin
+  insert into public.profiles (id, handle, display_name, unlock_tokens, earn_tokens)
+  values (
+    new.id,
+    -- Handle defaults to email prefix + short uuid suffix to guarantee uniqueness.
+    coalesce(
+      new.raw_user_meta_data->>'handle',
+      split_part(coalesce(new.email, ''), '@', 1) || '_' || substr(new.id::text, 1, 6)
+    ),
+    new.raw_user_meta_data->>'display_name',
+    0,
+    0
+  )
+  on conflict (id) do nothing;
+  return new;
+end;
+$$;
+
+drop trigger if exists on_auth_user_created on auth.users;
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute function public.handle_new_user();
+
+-- =========================================================================
 -- DONE. Go back to your Supabase dashboard → Table Editor to confirm the
 -- tables appear: profiles, picks, unlocks, transactions, advertisers.
 -- =========================================================================

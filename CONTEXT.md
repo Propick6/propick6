@@ -1,5 +1,5 @@
 # Pro Pick 6 — Project Context File
-*Last updated: April 23, 2026*
+*Last updated: April 23, 2026 (evening — pools module + Supabase wiring milestone)*
 
 ---
 
@@ -82,25 +82,46 @@ Platform nets:    ~$1.85 per unlock
 
 ---
 
-## Build Status (As of 2026-04-23)
+## Build Status (As of 2026-04-23 evening)
 
 ### Phase 1 — Visual prototype deployed ✅
 - Next.js 14 (App Router) + TypeScript + Tailwind CSS
 - 6 pages working on mock data: Feed, Leaderboard, +Pick, Wallet, My Stats, Advertise
 - Nav bar with always-visible token pills (🟡 and 🔵)
 - Brand styling complete — dark + green + gold + blue, Bebas Neue + DM Sans
-- Supabase SQL schema drafted in `supabase/schema.sql` (not yet applied)
+- Supabase SQL schema drafted in `supabase/schema.sql`
 - Pushed to `github.com/Propick6/propick6`
 - Deployed live at `propick6.vercel.app`
 - Git installed locally; `git push` auto-deploys going forward
 
-### Phase 2 — Wire Supabase (up next)
-- Paste `supabase/schema.sql` into Supabase SQL Editor → creates `profiles`, `picks`, `unlocks`, `transactions`, `advertisers` tables with RLS
-- Install `@supabase/supabase-js` as a dependency
-- Add Supabase client in `lib/supabase.ts`
-- Add auth pages: signup / login
-- Wire nav token pills + wallet balances to read from real `profiles` row
-- Add env vars to Vercel: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+### Phase 1.5 — Pools module foundation ✅
+- New NHL fantasy pools module plugged alongside the picks marketplace
+- 6 pages: `/pools` (list), `/pools/create`, `/pools/[id]` (detail + leaderboard), `/pools/[id]/team` (roster builder), `/pools/[id]/rules`, `/pools/[id]/settings`
+- Pool config: name, private/official, free vs 🟡 entry, duration, max entries, roster shape (F/D/G), scoring rules, draft mode (open vs unique)
+- NHL player list seeded with 52 real stars (`supabase/seed_nhl_players.sql`)
+- Pools nav tab added
+- Rules page includes worked scoring example (shows exactly how green fantasy-point totals are calculated)
+- All pool pages remain visual-first — details, rules, settings, team builder still on mock data until Phase 2.5 wires them
+
+### Phase 2 — Supabase wired ✅ (partial)
+- `supabase/schema.sql` applied in Supabase SQL Editor (creates `profiles`, `picks`, `unlocks`, `transactions`, `advertisers` + RLS + `handle_new_user` trigger that auto-creates a profile on sign-up)
+- `supabase/pools_schema.sql` applied (creates `nhl_players`, `pools`, `pool_entries`, `pool_entry_players`, `pool_payouts` + `pool_leaderboard` view + RLS)
+- `supabase/seed_nhl_players.sql` applied (52 players)
+- Supabase URL Configuration set — site URL + redirect URLs for localhost + production
+- `@supabase/supabase-js` + `@supabase/ssr` installed
+- Supabase clients: `lib/supabase/client.ts` (browser), `lib/supabase/server.ts` (server), `lib/supabase/middleware.ts`, root `middleware.ts` refreshes session on every request
+- Magic-link sign-in live: `/signin` + `/auth/callback` + `/auth/signout`
+- Nav shows real handle + real token balances when signed in, Sign in button when not
+- `/pools` list reads from DB (join on profiles for owner handle + count on pool_entries)
+- `/pools/create` inserts new pool with `auth.uid()` as owner
+- Env vars: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` in `.env.local` (local). Need to add to Vercel for production.
+
+### Phase 2.5 — Finish wiring pool pages (next up)
+- `/pools/[id]` detail page — read real pool + live leaderboard via `pool_leaderboard` view
+- `/pools/[id]/rules` — read real pool scoring config
+- `/pools/[id]/settings` — owner-only update (RLS already enforces; UI needs owner-check)
+- `/pools/[id]/team` — write picks to `pool_entries` + `pool_entry_players`
+- Also: Feed/Leaderboard/+Pick/Wallet/My Stats still on mock data — wire them to `picks`/`unlocks`/`transactions`/`profiles`
 
 ### Phase 3 — Wire Stripe (test mode)
 - Install `stripe` + `@stripe/stripe-js`
@@ -111,6 +132,8 @@ Platform nets:    ~$1.85 per unlock
 
 ### Phase 4 — Polish + launch prep
 - Real leaderboard computed from `picks` + `unlocks`
+- Pool payouts automation — settle pools via `pool_payouts`
+- NHL stats API sync — nightly job to refresh `nhl_players`
 - Advertiser self-service signup flow
 - Admin page for rake accounting
 - Age gate (19+) for Ontario compliance
@@ -149,6 +172,7 @@ Platform nets:    ~$1.85 per unlock
 ```
 Mikes Pro Picks/
 ├── ProPick6_Context.md         ← legacy copy in workspace root (can be deleted)
+├── TODO.md                     ← running project TODO (workspace-level, not in repo)
 └── propick6/                   ← the Next.js app (also at github.com/Propick6/propick6)
     ├── CONTEXT.md              ← this file (version-controlled with the code)
     ├── README.md
@@ -157,7 +181,9 @@ Mikes Pro Picks/
     ├── tsconfig.json
     ├── tailwind.config.ts
     ├── postcss.config.js
+    ├── middleware.ts           ← Supabase session refresh on every request
     ├── .gitignore
+    ├── .env.local.example      ← template; real .env.local is gitignored
     ├── app/
     │   ├── globals.css
     │   ├── layout.tsx
@@ -166,18 +192,37 @@ Mikes Pro Picks/
     │   ├── pick/page.tsx
     │   ├── wallet/page.tsx
     │   ├── stats/page.tsx
-    │   └── advertise/page.tsx
-    ├── components/Nav.tsx
-    ├── lib/mockData.ts
-    └── supabase/schema.sql     ← paste into Supabase SQL Editor for Phase 2
+    │   ├── advertise/page.tsx
+    │   ├── signin/page.tsx         ← magic-link sign-in
+    │   ├── auth/
+    │   │   ├── callback/route.ts   ← exchanges magic-link code for session
+    │   │   └── signout/route.ts
+    │   └── pools/
+    │       ├── page.tsx            (Pools list — reads from Supabase)
+    │       ├── create/page.tsx     (Create pool — writes to Supabase)
+    │       └── [id]/
+    │           ├── page.tsx        (Pool detail — mock data for now)
+    │           ├── team/page.tsx   (Team builder — mock data for now)
+    │           ├── rules/page.tsx  (Rules + scoring breakdown — mock data for now)
+    │           └── settings/page.tsx (Edit pool — mock data for now)
+    ├── components/Nav.tsx      ← reads auth state + profile for token pills
+    ├── lib/
+    │   ├── mockData.ts         (picks marketplace mock data)
+    │   ├── poolMockData.ts     (NHL players + pool types + helpers)
+    │   └── supabase/
+    │       ├── client.ts       (browser client)
+    │       ├── server.ts       (server components + route handlers)
+    │       └── middleware.ts   (session-refresh helper)
+    └── supabase/
+        ├── schema.sql              ← base: profiles/picks/unlocks/transactions/advertisers + trigger
+        ├── pools_schema.sql        ← pools module tables + RLS + leaderboard view
+        └── seed_nhl_players.sql    ← 52 NHL players
 ```
 
 ---
 
 ## Next Step When Resuming
-1. Finish phone testing of propick6.vercel.app — click through all 6 pages and report bugs/tweaks
-2. Apply any bugfixes and polish (iterate via `git push`)
-3. Begin Phase 2: paste `supabase/schema.sql` into Supabase SQL Editor
-4. Grab Supabase URL + anon key from Project Settings → API, add to Vercel env vars
-5. Claude generates `lib/supabase.ts` + auth pages + real token balance wiring
-6. `git push` → auto-deploys to propick6.vercel.app
+1. Add Supabase env vars to **Vercel** so production (propick6.vercel.app) can talk to the DB the same way localhost does — Vercel → Project → Settings → Environment Variables → add `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`, redeploy.
+2. Finish **Phase 2.5** — wire the remaining pool pages to Supabase (`/pools/[id]`, `/pools/[id]/team`, `/pools/[id]/rules`, `/pools/[id]/settings`) so the whole pool flow is real end-to-end.
+3. Pick one: wire the picks marketplace pages to Supabase (Feed, Wallet, +Pick, My Stats) OR tackle the auth enhancement item from TODO.md (password / social login) OR start Phase 3 (Stripe test mode).
+4. Running list of queued work: see `Mikes Pro Picks/TODO.md` in the workspace.
