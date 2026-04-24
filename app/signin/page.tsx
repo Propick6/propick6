@@ -1,13 +1,30 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 type Mode = "signin" | "signup" | "magic";
 
+// Next.js 14 requires useSearchParams() to live inside a <Suspense> boundary
+// during static generation, so the component that reads search params is
+// inner; the default export just wraps it.
 export default function SignInPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="max-w-sm mx-auto mt-10 text-center text-sm text-muted">
+          Loading…
+        </div>
+      }
+    >
+      <SignInInner />
+    </Suspense>
+  );
+}
+
+function SignInInner() {
   const params = useSearchParams();
   const nextPath = params.get("next") || "/pools";
   const errParam = params.get("error");
