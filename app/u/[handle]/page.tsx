@@ -45,8 +45,18 @@ export default function ProfilePage({
   const [profile, setProfile] = useState<Profile | null>(null);
   const [pools, setPools] = useState<OwnedPool[]>([]);
   const [picks, setPicks] = useState<Pick[]>([]);
+  const [activeTodayCount, setActiveTodayCount] = useState(0);
   const [isSelf, setIsSelf] = useState(false);
   const [copied, setCopied] = useState(false);
+
+  // Report modal state
+  const [reportOpen, setReportOpen] = useState(false);
+  const [reportReason, setReportReason] = useState<string>("spam");
+  const [reportNotes, setReportNotes] = useState("");
+  const [reportStatus, setReportStatus] = useState<
+    "idle" | "submitting" | "success" | "already" | "signin"
+  >("idle");
+  const [reportErr, setReportErr] = useState("");
 
   useEffect(() => {
     async function load() {
@@ -70,18 +80,30 @@ export default function ProfilePage({
           .order("created_at", { ascending: false });
         setPools((ownedPools as OwnedPool[]) ?? []);
 
-        // 3. Recent picks (last 30 days, most recent first)
+        // 3. Resolved picks only — the track record. Pending picks are
+        //    the paid product and live on the Feed behind the unlock button.
         const { data: recentPicks } = await supabase
           .from("picks")
           .select("id, sport, pick_type, matchup, selection, pick_date, result")
           .eq("seller_id", p.id)
+          .neq("result", "pending")
           .order("pick_date", { ascending: false })
           .order("created_at", { ascending: false })
           .limit(30);
         setPicks((recentPicks as Pick[]) ?? []);
+
+        // 4. Count of today's pending picks so we can show a CTA to the Feed.
+        const today = new Date().toISOString().slice(0, 10);
+        const { count: activeCount } = await supabase
+          .from("picks")
+          .select("id", { count: "exact", head: true })
+          .eq("seller_id", p.id)
+          .eq("pick_date", today)
+          .eq("result", "pending");
+        setActiveTodayCount(activeCount ?? 0);
       }
 
-      // 4. Am I looking at my own profile?
+      // 5. Am I looking at my own profile?
       const {
         data: { user },
       } = await supabase.auth.getUser();
@@ -145,6 +167,57 @@ export default function ProfilePage({
 
   function onFollow() {
     alert("Following isn't wired up yet — coming in a future round.");
+  }
+
+  async function openReport() {
+    // Must be signed in to report.
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      setReportStatus("signin");
+      setReportOpen(true);
+      return;
+    }
+    setReportReason("spam");
+    setReportNotes("");
+    setReportErr("");
+    setReportStatus("idle");
+    setReportOpen(true);
+  }
+
+  async function submitReport() {
+    if (!profile) return;
+    setReportErr("");
+    setReportStatus("submitting");
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      setReportStatus("signin");
+      return;
+    }
+
+    const { error } = await supabase.from("reports").insert({
+      reporter_id: user.id,
+      reported_id: profile.id,
+      reason: reportReason,
+      notes: reportNotes.trim() || null,
+    });
+
+    if (error) {
+      // 23505 = unique violation (user already reported this profile)
+      if (error.code === "23505") {
+        setReportStatus("already");
+      } else {
+        setReportErr(error.message);
+        setReportStatus("idle");
+      }
+      return;
+    }
+
+    setReportStatus("success");
   }
 
   return (
@@ -280,16 +353,40 @@ export default function ProfilePage({
         )}
       </div>
 
-      {/* Recent picks */}
+      {/* Active today — locked behind Feed unlock */}
+      {activeTodayCount > 0 && (
+        <Link
+          href="/"
+          className="block rounded-xl border border-gold/40 bg-gradient-to-r from-gold/10 to-transparent p-4 hover:bg-gold/15 transition"
+        >
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <div className="text-[11px] uppercase tracking-wider text-gold">
+                Active Today
+              </div>
+              <div className="font-display text-xl mt-0.5">
+                {activeTodayCount} pick{activeTodayCount === 1 ? "" : "s"}{" "}
+                posted — unlock on the Feed
+              </div>
+              <div className="text-[11px] text-muted mt-1">
+                🟡 1 token unlocks all of today&apos;s picks
+              </div>
+            </div>
+            <div className="text-gold text-2xl">→</div>
+          </div>
+        </Link>
+      )}
+
+      {/* Track record — resolved picks only */}
       <div className="rounded-xl border border-border bg-panel overflow-hidden">
         <div className="p-4 border-b border-border">
           <div className="text-[11px] uppercase tracking-[0.2em] text-muted">
-            Recent picks
+            Track Record
           </div>
           <div className="font-display text-xl">
             {picks.length === 0
-              ? "None yet"
-              : `Last ${picks.length} pick${picks.length === 1 ? "" : "s"}`}
+              ? "No resolved picks yet"
+              : `Last ${picks.length} settled pick${picks.length === 1 ? "" : "s"}`}
           </div>
         </div>
 
@@ -313,15 +410,138 @@ export default function ProfilePage({
       {!isSelf && (
         <div className="text-center">
           <button
-            onClick={() =>
-              alert(
-                "Reporting isn't wired up yet — coming in a future round."
-              )
-            }
+            onClick={openReport}
             className="text-xs text-muted hover:text-text underline"
           >
             Report this user
           </button>
+        </div>
+      )}
+
+      {/* Report modal */}
+      {reportOpen && (
+        <div
+          className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          onClick={() => setReportOpen(false)}
+        >
+          <div
+            className="bg-panel border border-border rounded-xl w-full max-w-md overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-5 border-b border-border">
+              <div className="text-[11px] uppercase tracking-[0.2em] text-muted">
+                Report
+              </div>
+              <div className="font-display text-2xl mt-0.5">
+                @{profile.handle}
+              </div>
+              <p className="text-xs text-muted mt-1">
+                Help keep Pro Pick 6 fair. Reports are reviewed by our team.
+              </p>
+            </div>
+
+            <div className="p-5 space-y-4">
+              {reportStatus === "signin" && (
+                <div className="rounded-md border border-hot/40 bg-hot/10 p-3 text-sm text-hot">
+                  You need to be signed in to report a user.{" "}
+                  <Link
+                    href={`/signin?next=/u/${profile.handle}`}
+                    className="underline"
+                  >
+                    Sign in →
+                  </Link>
+                </div>
+              )}
+
+              {reportStatus === "success" && (
+                <div className="rounded-md border border-green/40 bg-green/10 p-3 text-sm">
+                  <span className="font-semibold text-green">
+                    Report filed.
+                  </span>{" "}
+                  Thanks — we&apos;ll review it and take action if needed.
+                </div>
+              )}
+
+              {reportStatus === "already" && (
+                <div className="rounded-md border border-gold/40 bg-gold/10 p-3 text-sm">
+                  <span className="font-semibold text-gold">
+                    Already reported.
+                  </span>{" "}
+                  You&apos;ve filed a report on this user before — our team
+                  has it.
+                </div>
+              )}
+
+              {(reportStatus === "idle" || reportStatus === "submitting") && (
+                <>
+                  <div>
+                    <div className="text-xs text-muted mb-1">Reason</div>
+                    <select
+                      value={reportReason}
+                      onChange={(e) => setReportReason(e.target.value)}
+                      className="w-full bg-bg border border-border rounded-md px-3 py-2 text-sm"
+                    >
+                      <option value="spam">Spam or promotional</option>
+                      <option value="fake_picks">
+                        Fake or fabricated picks
+                      </option>
+                      <option value="abusive">Abusive behavior</option>
+                      <option value="cheating">
+                        Cheating / manipulating results
+                      </option>
+                      <option value="impersonation">Impersonating someone</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <div className="text-xs text-muted mb-1">
+                      Notes (optional)
+                    </div>
+                    <textarea
+                      value={reportNotes}
+                      onChange={(e) => setReportNotes(e.target.value)}
+                      maxLength={500}
+                      rows={4}
+                      placeholder="Add any specifics that would help our review."
+                      className="w-full bg-bg border border-border rounded-md px-3 py-2 text-sm resize-none"
+                    />
+                    <div className="text-[10px] text-muted text-right mt-1">
+                      {reportNotes.length}/500
+                    </div>
+                  </div>
+
+                  {reportErr && (
+                    <div className="rounded-md border border-hot/40 bg-hot/10 p-2 text-xs text-hot">
+                      {reportErr}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+
+            <div className="p-4 bg-panel2 border-t border-border flex items-center gap-2 justify-end">
+              <button
+                onClick={() => setReportOpen(false)}
+                className="px-4 py-2 rounded-full border border-border text-sm text-muted hover:text-text"
+              >
+                {reportStatus === "success" || reportStatus === "already"
+                  ? "Close"
+                  : "Cancel"}
+              </button>
+              {reportStatus !== "success" &&
+                reportStatus !== "already" &&
+                reportStatus !== "signin" && (
+                  <button
+                    onClick={submitReport}
+                    disabled={reportStatus === "submitting"}
+                    className="bg-hot text-bg font-semibold px-5 py-2 rounded-full text-sm disabled:opacity-60"
+                  >
+                    {reportStatus === "submitting" ? "Submitting…" : "Submit report"}
+                  </button>
+                )}
+            </div>
+          </div>
         </div>
       )}
     </div>

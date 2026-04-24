@@ -1,5 +1,5 @@
 # Pro Pick 6 — Project Context File
-*Last updated: April 23, 2026 (evening — pools module + Supabase wiring milestone)*
+*Last updated: April 24, 2026 (Feed + profiles live, Report flow shipped)*
 
 ---
 
@@ -116,12 +116,25 @@ Platform nets:    ~$1.85 per unlock
 - `/pools/create` inserts new pool with `auth.uid()` as owner
 - Env vars: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` in `.env.local` (local). Need to add to Vercel for production.
 
-### Phase 2.5 — Finish wiring pool pages (next up)
+### Phase 2.5 — Auth expansion + profiles + Feed ✅ (partial)
+- Email+password sign-up/sign-in/forgot-password/reset-password all live. Google OAuth code in place, awaiting Google Cloud setup (button hidden via `NEXT_PUBLIC_GOOGLE_ENABLED` env flag).
+- `/account` page — handle editor, display name, sign-out. Nav handle button now opens account instead of signing out.
+- 10 demo capper accounts seeded + 50+ demo picks on evergreen relative dates. Accounts have password `demopass123` so you can sign in AS them for testing.
+- Public profile pages at `/u/[handle]` — stats header, Track Record of resolved picks, pools hosted, Active Today CTA banner linking to Feed. Pending picks NOT shown on profile (gated to Feed to preserve the unlock monetization).
+- Home Feed reads live data: cappers with 6+ picks today show up, sorted by ROI. Ticker + stats + sponsor banner preserved. Unlock button still local-state (persistence pending).
+- Leaderboard handles + pool owner/entry handles link to `/u/[handle]`.
+- Report-user flow: `reports` table with RLS + Report modal on profile. Reports write to DB. **Admin review page + email notifications still TODO.**
+- Supabase MCP now authorized for Propick6 — SQL/migrations/seeds run directly from Claude.
+
+### Phase 2.5 continued — still pending
 - `/pools/[id]` detail page — read real pool + live leaderboard via `pool_leaderboard` view
 - `/pools/[id]/rules` — read real pool scoring config
 - `/pools/[id]/settings` — owner-only update (RLS already enforces; UI needs owner-check)
 - `/pools/[id]/team` — write picks to `pool_entries` + `pool_entry_players`
-- Also: Feed/Leaderboard/+Pick/Wallet/My Stats still on mock data — wire them to `picks`/`unlocks`/`transactions`/`profiles`
+- Unlock mechanic — persist to `unlocks` table, deduct `unlock_tokens`, credit `earn_tokens`. Core money loop.
+- +Pick page — wire the form to INSERT into `picks` so real users can actually post picks
+- Admin reports review page — gated by `is_admin` on profiles
+- Leaderboard + My Stats + Wallet pages — still on mock data
 
 ### Phase 3 — Wire Stripe (test mode)
 - Install `stripe` + `@stripe/stripe-js`
@@ -222,7 +235,11 @@ Mikes Pro Picks/
 ---
 
 ## Next Step When Resuming
-1. Add Supabase env vars to **Vercel** so production (propick6.vercel.app) can talk to the DB the same way localhost does — Vercel → Project → Settings → Environment Variables → add `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`, redeploy.
-2. Finish **Phase 2.5** — wire the remaining pool pages to Supabase (`/pools/[id]`, `/pools/[id]/team`, `/pools/[id]/rules`, `/pools/[id]/settings`) so the whole pool flow is real end-to-end.
-3. Pick one: wire the picks marketplace pages to Supabase (Feed, Wallet, +Pick, My Stats) OR tackle the auth enhancement item from TODO.md (password / social login) OR start Phase 3 (Stripe test mode).
-4. Running list of queued work: see `Mikes Pro Picks/TODO.md` in the workspace.
+1. Pick one meaningful next item (in rough priority order from TODO.md):
+   - **Wire Unlock to persist** — the core money loop. `unlocks` table insert + `profiles.unlock_tokens` / `earn_tokens` updates. After this the whole token economy is real.
+   - **Finish wiring pool pages** (`/pools/[id]`, team builder, rules, settings) so pools are fully functional end-to-end.
+   - **Admin reports page** — Nick needs a way to see reports inside the app, not just in Supabase Table Editor.
+   - **TOTP 2FA** — option 3 of the auth plan.
+   - **Google Cloud OAuth setup** — finish option 1 (deferred; console.cloud.google.com setup + `NEXT_PUBLIC_GOOGLE_ENABLED=true`).
+2. Running list of queued work: see `Mikes Pro Picks/TODO.md` in the workspace.
+3. Supabase MCP is now wired to Propick6 — SQL/seeds/migrations can run directly from chat. Vercel is still generate-and-paste (env vars, redeploys).
