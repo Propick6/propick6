@@ -23,6 +23,16 @@ type OwnedPool = {
   duration: string;
 };
 
+type Pick = {
+  id: string;
+  sport: string;
+  pick_type: string;
+  matchup: string;
+  selection: string;
+  pick_date: string;   // yyyy-mm-dd
+  result: "pending" | "win" | "loss" | "push";
+};
+
 export default function ProfilePage({
   params,
 }: {
@@ -34,6 +44,7 @@ export default function ProfilePage({
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [pools, setPools] = useState<OwnedPool[]>([]);
+  const [picks, setPicks] = useState<Pick[]>([]);
   const [isSelf, setIsSelf] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -58,9 +69,19 @@ export default function ProfilePage({
           .eq("owner_id", p.id)
           .order("created_at", { ascending: false });
         setPools((ownedPools as OwnedPool[]) ?? []);
+
+        // 3. Recent picks (last 30 days, most recent first)
+        const { data: recentPicks } = await supabase
+          .from("picks")
+          .select("id, sport, pick_type, matchup, selection, pick_date, result")
+          .eq("seller_id", p.id)
+          .order("pick_date", { ascending: false })
+          .order("created_at", { ascending: false })
+          .limit(30);
+        setPicks((recentPicks as Pick[]) ?? []);
       }
 
-      // 3. Am I looking at my own profile?
+      // 4. Am I looking at my own profile?
       const {
         data: { user },
       } = await supabase.auth.getUser();
@@ -259,15 +280,33 @@ export default function ProfilePage({
         )}
       </div>
 
-      {/* Recent picks placeholder — wire when picks are in DB */}
-      <div className="rounded-xl border border-border bg-panel p-4">
-        <div className="text-[11px] uppercase tracking-[0.2em] text-muted">
-          Recent picks
+      {/* Recent picks */}
+      <div className="rounded-xl border border-border bg-panel overflow-hidden">
+        <div className="p-4 border-b border-border">
+          <div className="text-[11px] uppercase tracking-[0.2em] text-muted">
+            Recent picks
+          </div>
+          <div className="font-display text-xl">
+            {picks.length === 0
+              ? "None yet"
+              : `Last ${picks.length} pick${picks.length === 1 ? "" : "s"}`}
+          </div>
         </div>
-        <div className="mt-2 text-sm text-muted">
-          Pick history isn&apos;t wired to the database yet — coming in the
-          next round.
-        </div>
+
+        {picks.length > 0 && (
+          <div className="divide-y divide-border">
+            {groupPicksByDate(picks).map(([date, group]) => (
+              <div key={date}>
+                <div className="px-4 py-2 bg-panel2 text-[11px] uppercase tracking-wider text-muted">
+                  {formatDate(date)}
+                </div>
+                {group.map((p) => (
+                  <PickRow key={p.id} pick={p} />
+                ))}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Options (report etc.) — only shown to others */}
@@ -287,6 +326,62 @@ export default function ProfilePage({
       )}
     </div>
   );
+}
+
+function PickRow({ pick }: { pick: Pick }) {
+  const resultStyles: Record<Pick["result"], string> = {
+    pending: "bg-panel2 text-muted border-border",
+    win: "bg-green/15 text-green border-green/40",
+    loss: "bg-hot/15 text-hot border-hot/40",
+    push: "bg-blue/15 text-blue border-blue/40",
+  };
+  const resultLabel: Record<Pick["result"], string> = {
+    pending: "• PENDING",
+    win: "✓ WIN",
+    loss: "✗ LOSS",
+    push: "= PUSH",
+  };
+  return (
+    <div className="flex items-start gap-3 p-3 hover:bg-panel2 transition">
+      <div className="text-[10px] font-semibold text-muted w-10 pt-1">
+        {pick.sport}
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="text-[11px] text-muted">{pick.pick_type}</div>
+        <div className="font-semibold truncate">{pick.matchup}</div>
+        <div className="text-sm text-green">{pick.selection}</div>
+      </div>
+      <span
+        className={`text-[10px] font-semibold px-2 py-1 rounded border whitespace-nowrap ${resultStyles[pick.result]}`}
+      >
+        {resultLabel[pick.result]}
+      </span>
+    </div>
+  );
+}
+
+// Group picks by pick_date, preserving the incoming (desc) order.
+function groupPicksByDate(picks: Pick[]): [string, Pick[]][] {
+  const map = new Map<string, Pick[]>();
+  for (const p of picks) {
+    const list = map.get(p.pick_date) ?? [];
+    list.push(p);
+    map.set(p.pick_date, list);
+  }
+  return Array.from(map.entries());
+}
+
+// "2026-04-23" -> "Today" / "Yesterday" / "Apr 21"
+function formatDate(isoDate: string): string {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const d = new Date(isoDate + "T00:00:00");
+  const diffDays = Math.round(
+    (today.getTime() - d.getTime()) / (1000 * 60 * 60 * 24)
+  );
+  if (diffDays === 0) return "Today";
+  if (diffDays === 1) return "Yesterday";
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
 function StatCard({
