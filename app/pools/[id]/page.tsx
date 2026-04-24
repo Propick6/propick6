@@ -71,7 +71,10 @@ export default function PoolDetailPage({
           )}
         </div>
         <div className="text-xs text-muted mt-1">
-          @{pool.ownerHandle} · {durationLabel(pool.duration)} · {pool.startsOn}
+          <Link href={`/u/${pool.ownerHandle}`} className="hover:text-text">
+            @{pool.ownerHandle}
+          </Link>{" "}
+          · {durationLabel(pool.duration)} · {pool.startsOn}
           {" → "}
           {pool.endsOn}
         </div>
@@ -199,7 +202,12 @@ export default function PoolDetailPage({
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="font-semibold truncate">{e.teamName}</div>
-                  <div className="text-xs text-muted">@{e.ownerHandle}</div>
+                  <Link
+                    href={`/u/${e.ownerHandle}`}
+                    className="text-xs text-muted hover:text-text"
+                  >
+                    @{e.ownerHandle}
+                  </Link>
                 </div>
                 <div className="font-display text-2xl text-green">
                   {e.totalPoints}

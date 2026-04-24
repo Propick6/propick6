@@ -116,15 +116,13 @@ export default function Nav() {
           )}
 
           {signedIn && (
-            <form action="/auth/signout" method="post">
-              <button
-                type="submit"
-                className="text-xs text-muted hover:text-text border border-border rounded-full px-2.5 py-1"
-                title={profile?.handle ? `@${profile.handle}` : "Sign out"}
-              >
-                {profile?.handle ? `@${profile.handle}` : "Sign out"}
-              </button>
-            </form>
+            <Link
+              href="/account"
+              className="text-xs text-muted hover:text-text border border-border rounded-full px-2.5 py-1"
+              title="Account settings"
+            >
+              {profile?.handle ? `@${profile.handle}` : "Account"}
+            </Link>
           )}
         </div>
       </div>

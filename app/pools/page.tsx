@@ -165,8 +165,17 @@ function PoolCard({ pool }: { pool: PoolRow }) {
           </div>
 
           <div className="text-xs text-muted mt-1">
-            @{pool.owner?.handle ?? "unknown"} ·{" "}
-            {durationLabel(pool.duration)} · roster{" "}
+            {pool.owner?.handle ? (
+              <Link
+                href={`/u/${pool.owner.handle}`}
+                className="hover:text-text"
+              >
+                @{pool.owner.handle}
+              </Link>
+            ) : (
+              "@unknown"
+            )}{" "}
+            · {durationLabel(pool.duration)} · roster{" "}
             {rosterSizeTotal({
               forwards: pool.roster_forwards,
               defense: pool.roster_defense,

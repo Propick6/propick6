@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { weeklyLeaders, monthlyLeaders, allTimeLeaders } from "@/lib/mockData";
 
@@ -58,7 +59,12 @@ export default function LeaderboardPage() {
           >
             <div className="font-display text-lg">{c.rank}</div>
             <div className="flex items-center gap-2 min-w-0">
-              <span className="truncate font-semibold">@{c.handle}</span>
+              <Link
+                href={`/u/${c.handle}`}
+                className="truncate font-semibold hover:text-green"
+              >
+                @{c.handle}
+              </Link>
               {c.status === "hot" && (
                 <span className="text-[10px] text-hot">🔥</span>
               )}
