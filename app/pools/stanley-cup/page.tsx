@@ -116,9 +116,11 @@ export default function StanleyCupPoolPage() {
   );
 
   const rosterFull = picked.size >= ROSTER_LIMIT;
-  const bracketReady = winnersPicked === SERIES.length;
+  const allWinnersPicked = winnersPicked === SERIES.length;
+  const allGamesPicked = gamesPicked === SERIES.length;
+  const bracketComplete = allWinnersPicked && allGamesPicked;
   const canSave =
-    rosterFull && bracketReady && teamName.trim().length > 0;
+    rosterFull && bracketComplete && teamName.trim().length > 0;
 
   function onSave() {
     setSaved(true);
@@ -152,8 +154,10 @@ export default function StanleyCupPoolPage() {
         </div>
         <h1 className="font-display text-3xl mt-1">STANLEY CUP NHL PLAYOFF POOL</h1>
         <p className="text-sm text-muted mt-1">
-          Click winners to fill the bracket, then build a 20-player playoff
-          roster. Score = bracket bonus + your players' fantasy points.
+          Pick a winner <span className="text-text">and</span> the number of
+          games (4–7) for all {SERIES.length} series, then draft any 20 playoff
+          players — forwards, defense, goalies, mix however you want. Score =
+          bracket bonus + your players' fantasy points.
         </p>
       </div>
 
@@ -399,8 +403,10 @@ export default function StanleyCupPoolPage() {
           <div className="text-xs text-muted flex-1 leading-tight">
             {!teamName.trim()
               ? "Name your team to enable Save."
-              : !bracketReady
-              ? `Pick winners for all ${SERIES.length} series.`
+              : !allWinnersPicked
+              ? `Pick winners for all ${SERIES.length} series (${winnersPicked}/${SERIES.length}).`
+              : !allGamesPicked
+              ? `Pick # of games for every series (${gamesPicked}/${SERIES.length}).`
               : !rosterFull
               ? `${picked.size}/${ROSTER_LIMIT} players — fill the roster.`
               : "All set — lock it in."}
