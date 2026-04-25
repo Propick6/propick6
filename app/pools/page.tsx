@@ -79,6 +79,32 @@ export default function PoolsIndexPage() {
         </Link>
       </div>
 
+      {/* Featured Stanley Cup pool card */}
+      <Link
+        href="/pools/stanley-cup"
+        className="block rounded-xl border border-gold/40 bg-gradient-to-r from-gold/10 to-transparent p-4 hover:from-gold/15 transition"
+      >
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 rounded-full bg-gold/15 border border-gold/40 flex items-center justify-center text-2xl">
+            🏆
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-display text-lg">
+                STANLEY CUP NHL PLAYOFF POOL
+              </span>
+              <span className="text-[10px] bg-gold/20 text-gold px-1.5 py-0.5 rounded tracking-wider">
+                FEATURED · 2026
+              </span>
+            </div>
+            <div className="text-xs text-muted mt-0.5">
+              Pick the bracket + draft 20 playoff players.
+            </div>
+          </div>
+          <span className="text-gold text-lg">→</span>
+        </div>
+      </Link>
+
       {/* Filter tabs */}
       <div className="flex items-center gap-2 text-sm">
         {(["all", "official", "private"] as Filter[]).map((f) => (

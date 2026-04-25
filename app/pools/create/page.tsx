@@ -132,8 +132,43 @@ export default function CreatePoolPage() {
         </Link>
         <h1 className="font-display text-3xl mt-2">CREATE A POOL</h1>
         <p className="text-sm text-muted mt-1">
-          Set the rules once — players join by link or code.
+          Pick a template or build a custom pool from scratch.
         </p>
+      </div>
+
+      {/* ── Templates ────────────────────────────────────────── */}
+      <div>
+        <div className="text-[11px] uppercase tracking-[0.2em] text-muted mb-2">
+          Templates
+        </div>
+        <Link
+          href="/pools/stanley-cup"
+          className="block rounded-xl border border-gold/40 bg-gradient-to-r from-gold/10 to-transparent p-4 hover:from-gold/15 transition"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-full bg-gold/15 border border-gold/40 flex items-center justify-center text-2xl">
+              🏆
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="font-display text-lg">
+                  STANLEY CUP NHL PLAYOFF POOL
+                </span>
+                <span className="text-[10px] bg-gold/20 text-gold px-1.5 py-0.5 rounded tracking-wider">
+                  NEW
+                </span>
+              </div>
+              <div className="text-xs text-muted mt-0.5">
+                Click your bracket + draft a 20-player playoff roster.
+                Bracket bonus + fantasy points.
+              </div>
+            </div>
+            <span className="text-gold text-lg">→</span>
+          </div>
+        </Link>
+        <div className="text-[11px] text-muted mt-2 ml-1">
+          Or build a custom pool ↓
+        </div>
       </div>
 
       <form onSubmit={onCreate} className="space-y-5">
