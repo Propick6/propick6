@@ -136,7 +136,6 @@ export default function StanleyCupPoolPage() {
         picks={picks}
         pickedPlayers={pickedPlayers}
         champion={champion}
-        rosterPoints={rosterPoints}
         onEdit={() => setSaved(false)}
       />
     );
@@ -439,17 +438,18 @@ function Recap({
   picks,
   pickedPlayers,
   champion,
-  rosterPoints,
   onEdit,
 }: {
   teamName: string;
   picks: Picks;
   pickedPlayers: NhlPlayer[];
   champion: PlayoffTeamLite | null;
-  rosterPoints: number;
   onEdit: () => void;
 }) {
-  // Group roster by position, sorted by fantasy points desc.
+  // Once the entry locks in, the player tally resets to 0 — those are the
+  // *active* (playoff) points for this entry, not the regular-season totals.
+  // Season stats are kept on the row (G/A/PIM) for context only.
+  // Order is the season-points order at draft time (proxy for "best players first").
   const forwards = pickedPlayers
     .filter((p) => p.position === "F")
     .sort((a, b) => b.fantasyPoints - a.fantasyPoints);
@@ -459,6 +459,9 @@ function Recap({
   const goalies = pickedPlayers
     .filter((p) => p.position === "G")
     .sort((a, b) => b.fantasyPoints - a.fantasyPoints);
+
+  // Active tally — playoff points start at 0 for every locked entry.
+  const liveRosterPoints = 0;
 
   // Group series by round for the bracket recap.
   const byRound: Record<RoundNum, Series[]> = { 1: [], 2: [], 3: [], 4: [] };
@@ -524,8 +527,8 @@ function Recap({
         <div className="grid grid-cols-3 gap-2 sm:gap-3">
           <StatBox
             label="Roster pts"
-            value={rosterPoints.toLocaleString()}
-            sub="from your 20 players"
+            value={liveRosterPoints.toLocaleString()}
+            sub="updates as the playoffs play out"
           />
           <StatBox
             label="Max bracket"
@@ -599,7 +602,7 @@ function Recap({
             </h2>
           </div>
           <div className="text-[11px] text-muted">
-            <span className="text-green">{rosterPoints}</span> fantasy pts to date
+            <span className="text-green">{liveRosterPoints}</span> playoff pts so far
           </div>
         </div>
 
@@ -777,7 +780,10 @@ function RosterGroup({
       </div>
     );
   }
-  const total = players.reduce((acc, p) => acc + p.fantasyPoints, 0);
+  // Active playoff points always start at 0 for every player on a locked entry.
+  // Season G/A/PIM/W/SO are still shown as supporting context.
+  const livePts = 0;
+  const groupTotal = 0;
   return (
     <div>
       <div className="flex items-center justify-between mb-1.5">
@@ -785,7 +791,7 @@ function RosterGroup({
           {title} ({players.length})
         </div>
         <div className="text-[11px] text-muted">
-          <span className="text-green">{total}</span> pts
+          <span className="text-green">{groupTotal}</span> pts
         </div>
       </div>
       <div className="rounded-lg border border-border overflow-hidden">
@@ -811,7 +817,7 @@ function RosterGroup({
                 </div>
               </div>
               <div className="font-display text-lg text-green">
-                {p.fantasyPoints}
+                {livePts}
               </div>
             </div>
           ))}
