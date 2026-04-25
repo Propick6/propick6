@@ -122,6 +122,24 @@ export default function StanleyCupPoolPage() {
 
   function onSave() {
     setSaved(true);
+    // Scroll to top so the recap is visible immediately.
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  }
+
+  // ---- Saved → show the recap instead of the editor ----
+  if (saved) {
+    return (
+      <Recap
+        teamName={teamName}
+        picks={picks}
+        pickedPlayers={pickedPlayers}
+        champion={champion}
+        rosterPoints={rosterPoints}
+        onEdit={() => setSaved(false)}
+      />
+    );
   }
 
   return (
@@ -398,13 +416,423 @@ export default function StanleyCupPoolPage() {
         </div>
       </div>
 
-      {saved && (
-        <div className="rounded-xl border border-green/40 bg-green/10 p-4 text-sm">
-          <span className="font-semibold text-green">{teamName}</span> locked
-          in. Bracket + roster saved locally — DB persistence comes next.
+    </div>
+  );
+}
+
+// =============================================================================
+// Recap — readable summary shown after Save
+// =============================================================================
+
+type PlayoffTeamLite = {
+  id: string;
+  name: string;
+  short: string;
+  conference: "East" | "West";
+  division: string;
+  seed: string;
+  primary: string;
+};
+
+function Recap({
+  teamName,
+  picks,
+  pickedPlayers,
+  champion,
+  rosterPoints,
+  onEdit,
+}: {
+  teamName: string;
+  picks: Picks;
+  pickedPlayers: NhlPlayer[];
+  champion: PlayoffTeamLite | null;
+  rosterPoints: number;
+  onEdit: () => void;
+}) {
+  // Group roster by position, sorted by fantasy points desc.
+  const forwards = pickedPlayers
+    .filter((p) => p.position === "F")
+    .sort((a, b) => b.fantasyPoints - a.fantasyPoints);
+  const defense = pickedPlayers
+    .filter((p) => p.position === "D")
+    .sort((a, b) => b.fantasyPoints - a.fantasyPoints);
+  const goalies = pickedPlayers
+    .filter((p) => p.position === "G")
+    .sort((a, b) => b.fantasyPoints - a.fantasyPoints);
+
+  // Group series by round for the bracket recap.
+  const byRound: Record<RoundNum, Series[]> = { 1: [], 2: [], 3: [], 4: [] };
+  for (const s of SERIES) byRound[s.round].push(s);
+
+  const gamesPicked = SERIES.reduce(
+    (acc, s) => acc + (picks[s.id]?.games ? 1 : 0),
+    0
+  );
+
+  return (
+    <div className="space-y-5">
+      {/* ── HERO ──────────────────────────────────────────────── */}
+      <div className="rounded-2xl border border-green/40 bg-gradient-to-br from-green/15 via-green/5 to-transparent p-5 sm:p-6 space-y-4">
+        <div className="flex items-center justify-between gap-3">
+          <div className="text-[10px] uppercase tracking-[0.25em] text-green">
+            ✓ Entry Locked In
+          </div>
+          <button
+            onClick={onEdit}
+            className="text-xs border border-border bg-panel hover:bg-panel2 text-muted hover:text-text px-3 py-1.5 rounded-full"
+          >
+            ← Edit picks
+          </button>
         </div>
+
+        <div>
+          <div className="text-[11px] uppercase tracking-wider text-muted">
+            Team
+          </div>
+          <h1 className="font-display text-3xl sm:text-4xl leading-none mt-1 break-words">
+            {teamName || "Unnamed Team"}
+          </h1>
+        </div>
+
+        {/* Champion callout */}
+        {champion && (
+          <div className="rounded-xl border border-gold/50 bg-gold/10 p-4 flex items-center gap-3">
+            <div
+              className="w-14 h-14 rounded-full flex items-center justify-center text-2xl shrink-0"
+              style={{
+                backgroundColor: `${champion.primary}30`,
+                border: `2px solid ${champion.primary}`,
+              }}
+            >
+              🏆
+            </div>
+            <div className="min-w-0">
+              <div className="text-[10px] uppercase tracking-[0.2em] text-gold">
+                Predicted Champion
+              </div>
+              <div className="font-display text-2xl sm:text-3xl leading-tight mt-0.5">
+                {champion.name}
+              </div>
+              <div className="text-[11px] text-muted">
+                {champion.conference} · {champion.division} · seed {champion.seed}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Quick stats grid */}
+        <div className="grid grid-cols-3 gap-2 sm:gap-3">
+          <StatBox
+            label="Roster pts"
+            value={rosterPoints.toLocaleString()}
+            sub="from your 20 players"
+          />
+          <StatBox
+            label="Max bracket"
+            value={maxBracketBonus().toLocaleString()}
+            sub={`${gamesPicked}/${SERIES.length} exact-games picked`}
+          />
+          <StatBox
+            label="Champion"
+            value={champion ? champion.short : "—"}
+            sub={champion ? `+${BRACKET_SCORING.round4Winner} if correct` : ""}
+          />
+        </div>
+      </div>
+
+      {/* ── BRACKET RECAP ─────────────────────────────────────── */}
+      <section className="rounded-xl border border-border bg-panel p-4 sm:p-5 space-y-4">
+        <div className="flex items-end justify-between">
+          <div>
+            <div className="text-[11px] uppercase tracking-[0.2em] text-muted">
+              Your Bracket
+            </div>
+            <h2 className="font-display text-xl">PLAYOFF PREDICTIONS</h2>
+          </div>
+          <div className="text-[11px] text-muted">
+            {SERIES.length} series
+          </div>
+        </div>
+
+        {/* East Conference */}
+        <BracketRecapGroup
+          title="East Conference"
+          tone="blue"
+          rounds={[
+            { label: "First Round", series: byRound[1].filter((s) => s.conference === "East") },
+            { label: "Division Finals", series: byRound[2].filter((s) => s.conference === "East") },
+            { label: "Conference Final", series: byRound[3].filter((s) => s.conference === "East") },
+          ]}
+          picks={picks}
+        />
+
+        {/* West Conference */}
+        <BracketRecapGroup
+          title="West Conference"
+          tone="gold"
+          rounds={[
+            { label: "First Round", series: byRound[1].filter((s) => s.conference === "West") },
+            { label: "Division Finals", series: byRound[2].filter((s) => s.conference === "West") },
+            { label: "Conference Final", series: byRound[3].filter((s) => s.conference === "West") },
+          ]}
+          picks={picks}
+        />
+
+        {/* Stanley Cup Final */}
+        <BracketRecapGroup
+          title="Stanley Cup Final"
+          tone="gold"
+          rounds={[{ label: "", series: byRound[4] }]}
+          picks={picks}
+        />
+      </section>
+
+      {/* ── ROSTER RECAP ──────────────────────────────────────── */}
+      <section className="rounded-xl border border-border bg-panel p-4 sm:p-5 space-y-4">
+        <div className="flex items-end justify-between">
+          <div>
+            <div className="text-[11px] uppercase tracking-[0.2em] text-muted">
+              Your Roster
+            </div>
+            <h2 className="font-display text-xl">
+              20-PLAYER LINEUP
+            </h2>
+          </div>
+          <div className="text-[11px] text-muted">
+            <span className="text-green">{rosterPoints}</span> fantasy pts to date
+          </div>
+        </div>
+
+        <RosterGroup title="Forwards" pos="F" players={forwards} />
+        <RosterGroup title="Defense" pos="D" players={defense} />
+        <RosterGroup title="Goalies" pos="G" players={goalies} />
+      </section>
+
+      {/* ── Footer actions ───────────────────────────────────── */}
+      <div className="flex items-center gap-2 pt-2">
+        <button
+          onClick={onEdit}
+          className="bg-panel border border-border text-text px-4 py-2 rounded-full text-sm hover:bg-panel2"
+        >
+          Edit picks
+        </button>
+        <Link
+          href="/pools"
+          className="text-muted hover:text-text text-sm px-3 py-2"
+        >
+          ← Back to Pools
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+function StatBox({
+  label,
+  value,
+  sub,
+}: {
+  label: string;
+  value: string;
+  sub?: string;
+}) {
+  return (
+    <div className="rounded-lg border border-border bg-bg p-3">
+      <div className="text-[10px] uppercase tracking-wider text-muted">
+        {label}
+      </div>
+      <div className="font-display text-2xl mt-0.5 text-green leading-none">
+        {value}
+      </div>
+      {sub && (
+        <div className="text-[10px] text-muted mt-1 leading-tight">{sub}</div>
       )}
     </div>
+  );
+}
+
+function BracketRecapGroup({
+  title,
+  tone,
+  rounds,
+  picks,
+}: {
+  title: string;
+  tone: "blue" | "gold";
+  rounds: { label: string; series: Series[] }[];
+  picks: Picks;
+}) {
+  const accent = tone === "blue" ? "text-blue" : "text-gold";
+  return (
+    <div className="space-y-3">
+      <div className={`text-[10px] uppercase tracking-[0.25em] ${accent}`}>
+        {title}
+      </div>
+      {rounds.map((r, i) => (
+        <div key={i} className="space-y-1.5">
+          {r.label && (
+            <div className="text-[10px] uppercase tracking-wider text-muted">
+              {r.label}{" "}
+              <span className="text-muted">
+                · +{pointsForRound(r.series[0]?.round ?? 1)} ea
+              </span>
+            </div>
+          )}
+          <div className="space-y-1.5">
+            {r.series.map((s) => (
+              <SeriesRecapRow key={s.id} series={s} picks={picks} />
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function SeriesRecapRow({
+  series,
+  picks,
+}: {
+  series: Series;
+  picks: Picks;
+}) {
+  const { topId, bottomId } = resolveSeriesTeams(series, picks);
+  const pick = picks[series.id];
+  const winnerId = pick?.winnerId;
+  const games = pick?.games;
+
+  // Winner + loser IDs
+  const loserId =
+    winnerId && topId && bottomId
+      ? winnerId === topId
+        ? bottomId
+        : topId
+      : null;
+
+  const winner = winnerId ? PLAYOFF_TEAMS[winnerId] : null;
+  const loser = loserId ? PLAYOFF_TEAMS[loserId] : null;
+
+  if (!winner || !loser) {
+    return (
+      <div className="rounded-lg border border-border bg-bg p-3 text-xs text-muted italic">
+        Incomplete pick
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-lg border border-border bg-bg p-3 flex items-center gap-3">
+      {/* Winner badge */}
+      <span
+        className="w-9 h-9 rounded-md flex items-center justify-center text-[10px] font-bold shrink-0"
+        style={{
+          backgroundColor: `${winner.primary}33`,
+          color: winner.primary,
+          border: `1px solid ${winner.primary}88`,
+        }}
+      >
+        {winner.id}
+      </span>
+
+      <div className="flex-1 min-w-0 text-sm leading-tight">
+        <div className="truncate">
+          <span className="font-semibold text-text">{winner.name}</span>
+          <span className="text-muted"> over </span>
+          <span className="text-muted line-through decoration-muted/40">
+            {loser.name}
+          </span>
+        </div>
+        <div className="text-[11px] text-muted mt-0.5">
+          {games ? `in ${games} games` : "games not picked"}
+        </div>
+      </div>
+
+      {games && (
+        <span className="text-[11px] text-muted whitespace-nowrap">
+          +{BRACKET_SCORING.exactGames} exact
+        </span>
+      )}
+    </div>
+  );
+}
+
+function RosterGroup({
+  title,
+  pos,
+  players,
+}: {
+  title: string;
+  pos: Position;
+  players: NhlPlayer[];
+}) {
+  if (players.length === 0) {
+    return (
+      <div>
+        <div className="text-[10px] uppercase tracking-wider text-muted mb-1">
+          {title} (0)
+        </div>
+        <div className="text-xs text-muted italic py-1">
+          No {title.toLowerCase()} drafted.
+        </div>
+      </div>
+    );
+  }
+  const total = players.reduce((acc, p) => acc + p.fantasyPoints, 0);
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-1.5">
+        <div className="text-[10px] uppercase tracking-wider text-muted">
+          {title} ({players.length})
+        </div>
+        <div className="text-[11px] text-muted">
+          <span className="text-green">{total}</span> pts
+        </div>
+      </div>
+      <div className="rounded-lg border border-border overflow-hidden">
+        <div className="divide-y divide-border">
+          {players.map((p, i) => (
+            <div
+              key={p.id}
+              className={`flex items-center gap-3 px-3 py-2 ${
+                i % 2 === 0 ? "bg-bg" : "bg-panel"
+              }`}
+            >
+              <span className="text-[10px] text-muted w-4 text-right">
+                {i + 1}
+              </span>
+              <RecapPosPill pos={pos} />
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-semibold truncate">{p.name}</div>
+                <div className="text-[10px] text-muted">
+                  {p.team} ·{" "}
+                  {p.position === "G"
+                    ? `${p.wins} W · ${p.shutouts} SO`
+                    : `${p.goals} G · ${p.assists} A · ${p.pim} PIM`}
+                </div>
+              </div>
+              <div className="font-display text-lg text-green">
+                {p.fantasyPoints}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function RecapPosPill({ pos }: { pos: Position }) {
+  const styles: Record<Position, string> = {
+    F: "bg-green/15 text-green",
+    D: "bg-blue/15 text-blue",
+    G: "bg-gold/15 text-gold",
+  };
+  return (
+    <span
+      className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold ${styles[pos]}`}
+    >
+      {pos}
+    </span>
   );
 }
 
