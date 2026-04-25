@@ -195,24 +195,11 @@ export default function StanleyCupPoolPage() {
           </div>
         </div>
 
-        {/* Conference + Final blocks */}
-        <BracketColumn
-          conference="East"
-          picks={picks}
-          pickWinner={pickWinner}
-          pickGames={pickGames}
-        />
-        <BracketColumn
-          conference="West"
-          picks={picks}
-          pickWinner={pickWinner}
-          pickGames={pickGames}
-        />
-        <FinalColumn
-          picks={picks}
-          pickWinner={pickWinner}
-          pickGames={pickGames}
-        />
+        {/* Visual bracket — true NHL-style left-to-right with the Cup at center */}
+        <BracketView picks={picks} pickWinner={pickWinner} />
+
+        {/* Mini games-per-series picker — centered under the bracket */}
+        <GamesPickerPanel picks={picks} pickGames={pickGames} />
 
         {champion && (
           <div className="rounded-xl border border-gold/40 bg-gold/10 p-4 text-center">
@@ -938,193 +925,186 @@ function RecapPosPill({ pos }: { pos: Position }) {
 // Bracket subcomponents
 // =============================================================================
 
-function BracketColumn({
-  conference,
+const seriesById = (id: string): Series =>
+  SERIES.find((s) => s.id === id) as Series;
+
+/**
+ * Visual NHL-style bracket. Seven columns, left to right:
+ *
+ *   East R1 (4) | East R2 (2) | East CF (1) | Cup (1) | West CF (1) | West R2 (2) | West R1 (4)
+ *
+ * Each column is a flex column with `justify-around`, which naturally vertically
+ * centers each later round between its parent pair (no manual offsets needed).
+ * Wrapped in a horizontal scroller so the bracket survives narrow screens.
+ */
+function BracketView({
   picks,
   pickWinner,
-  pickGames,
-}: {
-  conference: "East" | "West";
-  picks: Picks;
-  pickWinner: (sid: string, tid: string) => void;
-  pickGames: (sid: string, g: 4 | 5 | 6 | 7) => void;
-}) {
-  const round1 = SERIES.filter((s) => s.round === 1 && s.conference === conference);
-  const round2 = SERIES.filter((s) => s.round === 2 && s.conference === conference);
-  const round3 = SERIES.filter((s) => s.round === 3 && s.conference === conference);
-
-  return (
-    <div className="rounded-xl border border-border bg-panel p-4 space-y-3">
-      <div className="flex items-center gap-2">
-        <span
-          className={`text-[10px] uppercase tracking-[0.2em] ${
-            conference === "East" ? "text-blue" : "text-gold"
-          }`}
-        >
-          {conference} Conference
-        </span>
-      </div>
-
-      <RoundBlock
-        title="First Round"
-        round={1}
-        list={round1}
-        picks={picks}
-        pickWinner={pickWinner}
-        pickGames={pickGames}
-      />
-      <RoundBlock
-        title="Division Finals"
-        round={2}
-        list={round2}
-        picks={picks}
-        pickWinner={pickWinner}
-        pickGames={pickGames}
-      />
-      <RoundBlock
-        title="Conference Final"
-        round={3}
-        list={round3}
-        picks={picks}
-        pickWinner={pickWinner}
-        pickGames={pickGames}
-      />
-    </div>
-  );
-}
-
-function FinalColumn({
-  picks,
-  pickWinner,
-  pickGames,
 }: {
   picks: Picks;
   pickWinner: (sid: string, tid: string) => void;
-  pickGames: (sid: string, g: 4 | 5 | 6 | 7) => void;
 }) {
-  const final = SERIES.filter((s) => s.round === 4);
   return (
-    <div className="rounded-xl border border-gold/30 bg-gold/5 p-4">
-      <div className="text-[10px] uppercase tracking-[0.2em] text-gold mb-3">
-        Stanley Cup Final
-      </div>
-      <RoundBlock
-        title=""
-        round={4}
-        list={final}
-        picks={picks}
-        pickWinner={pickWinner}
-        pickGames={pickGames}
-      />
-    </div>
-  );
-}
+    <div className="rounded-xl border border-border bg-panel p-3">
+      <div className="overflow-x-auto">
+        <div className="min-w-[1100px]">
+          {/* Column headers */}
+          <div className="grid grid-cols-7 gap-2 text-[9px] uppercase tracking-wider text-muted text-center mb-2">
+            <div>
+              <span className="text-blue">East</span> · First Round
+            </div>
+            <div>
+              <span className="text-blue">East</span> · Div Final
+            </div>
+            <div>
+              <span className="text-blue">East</span> · Conf Final
+            </div>
+            <div className="text-gold">Stanley Cup</div>
+            <div>
+              <span className="text-gold">West</span> · Conf Final
+            </div>
+            <div>
+              <span className="text-gold">West</span> · Div Final
+            </div>
+            <div>
+              <span className="text-gold">West</span> · First Round
+            </div>
+          </div>
 
-function RoundBlock({
-  title,
-  round,
-  list,
-  picks,
-  pickWinner,
-  pickGames,
-}: {
-  title: string;
-  round: RoundNum;
-  list: Series[];
-  picks: Picks;
-  pickWinner: (sid: string, tid: string) => void;
-  pickGames: (sid: string, g: 4 | 5 | 6 | 7) => void;
-}) {
-  return (
-    <div>
-      {title && (
-        <div className="text-[10px] uppercase tracking-wider text-muted mb-2">
-          {title} <span className="text-muted">· +{pointsForRound(round)} ea</span>
+          {/* The bracket grid — 7 columns, equal-height, evenly spaced cards */}
+          <div className="grid grid-cols-7 gap-2 min-h-[420px]">
+            <BracketCol
+              series={[
+                seriesById("e_a1"),
+                seriesById("e_a2"),
+                seriesById("e_m1"),
+                seriesById("e_m2"),
+              ]}
+              picks={picks}
+              pickWinner={pickWinner}
+            />
+            <BracketCol
+              series={[seriesById("e_atl"), seriesById("e_met")]}
+              picks={picks}
+              pickWinner={pickWinner}
+            />
+            <BracketCol
+              series={[seriesById("e_cf")]}
+              picks={picks}
+              pickWinner={pickWinner}
+            />
+            <BracketCol
+              series={[seriesById("scf")]}
+              picks={picks}
+              pickWinner={pickWinner}
+              isFinal
+            />
+            <BracketCol
+              series={[seriesById("w_cf")]}
+              picks={picks}
+              pickWinner={pickWinner}
+            />
+            <BracketCol
+              series={[seriesById("w_pac"), seriesById("w_cen")]}
+              picks={picks}
+              pickWinner={pickWinner}
+            />
+            <BracketCol
+              series={[
+                seriesById("w_p1"),
+                seriesById("w_p2"),
+                seriesById("w_c1"),
+                seriesById("w_c2"),
+              ]}
+              picks={picks}
+              pickWinner={pickWinner}
+            />
+          </div>
         </div>
-      )}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-        {list.map((s) => (
-          <SeriesCard
-            key={s.id}
-            series={s}
-            picks={picks}
-            onPickWinner={(tid) => pickWinner(s.id, tid)}
-            onPickGames={(g) => pickGames(s.id, g)}
-          />
-        ))}
       </div>
     </div>
   );
 }
 
-function SeriesCard({
+function BracketCol({
+  series,
+  picks,
+  pickWinner,
+  isFinal,
+}: {
+  series: Series[];
+  picks: Picks;
+  pickWinner: (sid: string, tid: string) => void;
+  isFinal?: boolean;
+}) {
+  return (
+    <div className="flex flex-col justify-around gap-1.5">
+      {series.map((s) => (
+        <MiniSeriesCard
+          key={s.id}
+          series={s}
+          picks={picks}
+          onPickWinner={(tid) => pickWinner(s.id, tid)}
+          isFinal={isFinal}
+        />
+      ))}
+    </div>
+  );
+}
+
+/** Compact card — just the matchup. Games picker lives in the panel below. */
+function MiniSeriesCard({
   series,
   picks,
   onPickWinner,
-  onPickGames,
+  isFinal,
 }: {
   series: Series;
   picks: Picks;
   onPickWinner: (teamId: string) => void;
-  onPickGames: (g: 4 | 5 | 6 | 7) => void;
+  isFinal?: boolean;
 }) {
   const { topId, bottomId } = resolveSeriesTeams(series, picks);
   const pick = picks[series.id];
-  const isReady = topId && bottomId;
+  const isReady = !!topId && !!bottomId;
   const winnerId = pick?.winnerId;
+  const games = pick?.games;
+
+  const borderClass = isFinal
+    ? winnerId
+      ? "border-gold/60 bg-gold/10"
+      : "border-gold/40 bg-gold/5"
+    : winnerId
+    ? "border-green/40 bg-green/5"
+    : isReady
+    ? "border-border bg-bg"
+    : "border-border bg-bg opacity-60";
 
   return (
-    <div
-      className={`rounded-lg border p-2.5 transition ${
-        winnerId
-          ? "border-green/40 bg-green/5"
-          : isReady
-          ? "border-border bg-bg"
-          : "border-border bg-bg opacity-60"
-      }`}
-    >
-      <TeamRow
+    <div className={`rounded border ${borderClass} p-1`}>
+      <MiniTeamRow
         teamId={topId}
         isWinner={!!winnerId && winnerId === topId}
-        canPick={!!isReady}
+        canPick={isReady}
         onClick={() => topId && onPickWinner(topId)}
       />
-      <TeamRow
+      <MiniTeamRow
         teamId={bottomId}
         isWinner={!!winnerId && winnerId === bottomId}
-        canPick={!!isReady}
+        canPick={isReady}
         onClick={() => bottomId && onPickWinner(bottomId)}
       />
-
-      {/* Games selector — appears once a winner is chosen */}
+      {/* Games badge — read-only here. Picker is below. */}
       {winnerId && (
-        <div className="flex items-center gap-1 mt-2 pt-2 border-t border-border">
-          <span className="text-[9px] uppercase tracking-wider text-muted mr-1">
-            Games
-          </span>
-          {([4, 5, 6, 7] as const).map((n) => {
-            const active = pick?.games === n;
-            return (
-              <button
-                key={n}
-                onClick={() => onPickGames(n)}
-                className={`flex-1 text-[11px] py-0.5 rounded border transition ${
-                  active
-                    ? "bg-green/15 text-green border-green/40"
-                    : "bg-panel border-border text-muted hover:text-text"
-                }`}
-              >
-                {n}
-              </button>
-            );
-          })}
+        <div className="text-center text-[9px] text-muted mt-0.5">
+          {games ? `in ${games}` : "set games ↓"}
         </div>
       )}
     </div>
   );
 }
 
-function TeamRow({
+function MiniTeamRow({
   teamId,
   isWinner,
   canPick,
@@ -1137,11 +1117,11 @@ function TeamRow({
 }) {
   if (!teamId) {
     return (
-      <div className="flex items-center gap-2 py-1.5 px-1 text-xs text-muted">
-        <span className="w-7 h-7 rounded bg-panel2 border border-border flex items-center justify-center text-[10px]">
+      <div className="flex items-center gap-1 px-1 py-0.5 text-[10px] text-muted">
+        <span className="w-5 h-5 rounded bg-panel2 border border-border flex items-center justify-center text-[8px] shrink-0">
           —
         </span>
-        <span className="italic">Awaiting winner…</span>
+        <span className="italic truncate">TBD</span>
       </div>
     );
   }
@@ -1150,40 +1130,127 @@ function TeamRow({
     <button
       onClick={onClick}
       disabled={!canPick}
-      className={`w-full flex items-center gap-2 py-1.5 px-1 rounded transition text-left ${
+      className={`w-full flex items-center gap-1 px-1 py-0.5 rounded transition text-left ${
         isWinner
-          ? "bg-green/15"
+          ? "bg-green/20 ring-1 ring-green/40"
           : canPick
           ? "hover:bg-panel2"
           : "opacity-60"
       }`}
     >
       <span
-        className="w-7 h-7 rounded flex items-center justify-center text-[9px] font-bold"
+        className="w-5 h-5 rounded flex items-center justify-center text-[8px] font-bold shrink-0"
         style={{
-          backgroundColor: `${team.primary}30`,
+          backgroundColor: `${team.primary}33`,
           color: team.primary,
           border: `1px solid ${team.primary}66`,
         }}
       >
         {team.id}
       </span>
-      <div className="flex-1 min-w-0">
-        <div className="text-xs font-semibold truncate">{team.short}</div>
-        <div className="text-[9px] uppercase tracking-wider text-muted">
-          {team.seed}
+      <span className="flex-1 min-w-0 text-[11px] font-semibold truncate leading-tight">
+        {team.short}
+      </span>
+      <span className="text-[8px] uppercase tracking-wider text-muted shrink-0">
+        {team.seed}
+      </span>
+      {isWinner && (
+        <span className="text-green text-[10px] shrink-0">✓</span>
+      )}
+    </button>
+  );
+}
+
+/**
+ * Mini games-per-series module sitting under the bracket. Shows one compact
+ * row for every series with a picked winner — pick 4/5/6/7 inline. Hidden
+ * series (no winner picked yet) just don't show up.
+ */
+function GamesPickerPanel({
+  picks,
+  pickGames,
+}: {
+  picks: Picks;
+  pickGames: (sid: string, g: 4 | 5 | 6 | 7) => void;
+}) {
+  const open = SERIES.filter((s) => picks[s.id]?.winnerId);
+  const filled = open.filter((s) => picks[s.id]?.games).length;
+
+  if (open.length === 0) {
+    return (
+      <div className="rounded-lg border border-dashed border-border bg-panel/40 p-3 text-center text-[11px] text-muted">
+        Pick a winner above and the games selector for that series will appear here.
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-lg border border-border bg-panel p-3">
+      <div className="flex items-center justify-between mb-2">
+        <div className="text-[10px] uppercase tracking-[0.2em] text-muted">
+          Games per series
+        </div>
+        <div className="text-[10px] text-muted">
+          <span className={filled === open.length ? "text-green" : ""}>
+            {filled}
+          </span>
+          /{open.length} set ·{" "}
+          <span className="text-green">+{BRACKET_SCORING.exactGames}</span> exact
         </div>
       </div>
-      <span
-        className={`w-5 h-5 rounded-full border flex items-center justify-center text-[10px] ${
-          isWinner
-            ? "bg-green text-bg border-green"
-            : "border-border text-muted"
-        }`}
-      >
-        {isWinner ? "✓" : ""}
-      </span>
-    </button>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1.5">
+        {open.map((s) => {
+          const winnerId = picks[s.id]!.winnerId!;
+          const winner = PLAYOFF_TEAMS[winnerId];
+          const { topId, bottomId } = resolveSeriesTeams(s, picks);
+          const loserId = winnerId === topId ? bottomId : topId;
+          const loser = loserId ? PLAYOFF_TEAMS[loserId] : null;
+          const games = picks[s.id]?.games;
+          return (
+            <div
+              key={s.id}
+              className="flex items-center gap-2 rounded border border-border bg-bg px-2 py-1.5"
+            >
+              <div className="flex-1 min-w-0 text-[11px] leading-tight">
+                <div className="truncate">
+                  <span className="font-semibold">{winner.short}</span>
+                  <span className="text-muted"> over </span>
+                  {loser ? (
+                    <span className="text-muted line-through decoration-muted/40">
+                      {loser.short}
+                    </span>
+                  ) : (
+                    <span className="text-muted italic">tbd</span>
+                  )}
+                </div>
+                <div className="text-[9px] uppercase tracking-wider text-muted">
+                  {s.label}
+                </div>
+              </div>
+              <div className="flex gap-0.5 shrink-0">
+                {([4, 5, 6, 7] as const).map((n) => {
+                  const active = games === n;
+                  return (
+                    <button
+                      key={n}
+                      onClick={() => pickGames(s.id, n)}
+                      className={`w-7 h-7 rounded text-[11px] border transition tabular-nums ${
+                        active
+                          ? "bg-green/20 text-green border-green/50"
+                          : "bg-panel border-border text-muted hover:text-text hover:bg-panel2"
+                      }`}
+                    >
+                      {n}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
