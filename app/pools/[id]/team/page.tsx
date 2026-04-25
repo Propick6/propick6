@@ -144,7 +144,7 @@ export default function BuildTeamPage({
   ) : null;
 
   return (
-    <div className="space-y-2 text-[12px]">
+    <div className="space-y-2 text-[12px] lg:-mx-8 xl:-mx-20 2xl:-mx-32">
       <div>
         <Link href={`/pools/${id}`} className="text-[10px] text-muted hover:text-text">
           ← Back to pool
@@ -170,9 +170,27 @@ export default function BuildTeamPage({
           />
         </div>
         <div className="grid grid-cols-3 gap-1">
-          <SlotBox label="F" have={pickedBy.F.length} need={slotCounts.F} />
-          <SlotBox label="D" have={pickedBy.D.length} need={slotCounts.D} />
-          <SlotBox label="G" have={pickedBy.G.length} need={slotCounts.G} />
+          <SlotBox
+            label="F"
+            have={pickedBy.F.length}
+            need={slotCounts.F}
+            active={filter === "F"}
+            onClick={() => setFilter(filter === "F" ? "all" : "F")}
+          />
+          <SlotBox
+            label="D"
+            have={pickedBy.D.length}
+            need={slotCounts.D}
+            active={filter === "D"}
+            onClick={() => setFilter(filter === "D" ? "all" : "D")}
+          />
+          <SlotBox
+            label="G"
+            have={pickedBy.G.length}
+            need={slotCounts.G}
+            active={filter === "G"}
+            onClick={() => setFilter(filter === "G" ? "all" : "G")}
+          />
         </div>
       </div>
 
@@ -267,58 +285,101 @@ export default function BuildTeamPage({
         </p>
       )}
 
-      {/* Player list — denser rows */}
+      {/* Player list — column-based table so the row uses horizontal space */}
       <div className="rounded border border-border bg-panel overflow-hidden">
-        <div className="divide-y divide-border">
-          {visible.map((p) => {
-            const isPicked = picks.has(p.id);
-            const posFull =
-              !isPicked && pickedBy[p.position].length >= slotCounts[p.position];
-            return (
-              <button
-                key={p.id}
-                onClick={() => togglePick(p)}
-                disabled={posFull}
-                className={`w-full flex items-center gap-1.5 px-2 py-1 text-left transition ${
-                  isPicked
-                    ? "bg-green/10"
-                    : posFull
-                    ? "opacity-40"
-                    : "hover:bg-panel2"
-                }`}
-              >
-                <PosPill pos={p.position} />
-                <div className="flex-1 min-w-0">
-                  <div className="text-[11px] font-semibold truncate leading-tight">
-                    {p.name}{" "}
-                    <span className="text-muted text-[9px]">· {p.team}</span>
-                  </div>
-                  <div className="text-[9px] text-muted leading-tight">
-                    {p.position === "G"
-                      ? `${p.wins} W · ${p.shutouts} SO`
-                      : `${p.goals} G · ${p.assists} A · ${p.pim} PIM`}
-                  </div>
-                </div>
-                <div className="font-display text-sm text-green leading-none">
-                  {p.fantasyPoints}
-                </div>
-                <div
-                  className={`ml-0.5 w-4 h-4 rounded-full border flex items-center justify-center text-[9px] ${
-                    isPicked
-                      ? "bg-green text-bg border-green"
-                      : "border-border text-muted"
-                  }`}
-                >
-                  {isPicked ? "✓" : "+"}
-                </div>
-              </button>
-            );
-          })}
-          {visible.length === 0 && (
-            <div className="p-3 text-center text-muted text-[10px]">
-              No players match that filter.
+        <div className="overflow-x-auto">
+          <div className="min-w-[640px]">
+            {/* Column header */}
+            <div className="bg-panel2 border-b border-border flex items-center gap-1.5 px-2 py-1 text-[9px] uppercase tracking-wider text-muted sticky top-0 z-10">
+              <div className="w-5 shrink-0" />
+              <div className="flex-1 min-w-[140px]">Player</div>
+              <div className="w-9 text-center shrink-0">GP</div>
+              <div className="w-9 text-center shrink-0">G</div>
+              <div className="w-9 text-center shrink-0">A</div>
+              <div className="w-9 text-center shrink-0">P</div>
+              <div className="w-12 text-center shrink-0">TOI</div>
+              <div className="w-11 text-center shrink-0">S</div>
+              <div className="w-11 text-center shrink-0">PIM</div>
+              <div className="w-12 text-center shrink-0">FPTS</div>
+              <div className="w-4 shrink-0" />
             </div>
-          )}
+
+            <div className="divide-y divide-border">
+              {visible.map((p) => {
+                const isPicked = picks.has(p.id);
+                const posFull =
+                  !isPicked &&
+                  pickedBy[p.position].length >= slotCounts[p.position];
+                const pts = p.goals + p.assists;
+                return (
+                  <button
+                    key={p.id}
+                    onClick={() => togglePick(p)}
+                    disabled={posFull}
+                    className={`w-full flex items-center gap-1.5 px-2 py-1 text-left transition ${
+                      isPicked
+                        ? "bg-green/10"
+                        : posFull
+                        ? "opacity-40"
+                        : "hover:bg-panel2"
+                    }`}
+                  >
+                    <div className="w-5 shrink-0">
+                      <PosPill pos={p.position} />
+                    </div>
+                    <div className="flex-1 min-w-[140px]">
+                      <div className="text-[11px] font-semibold truncate leading-tight">
+                        {p.name}
+                      </div>
+                      <div className="text-[9px] text-muted leading-tight">
+                        {p.team}
+                        {p.position === "G" &&
+                          ` · ${p.wins} W · ${p.shutouts} SO`}
+                      </div>
+                    </div>
+                    <div className="w-9 text-center text-[11px] tabular-nums shrink-0">
+                      {p.gp}
+                    </div>
+                    <div className="w-9 text-center text-[11px] tabular-nums shrink-0">
+                      {p.goals}
+                    </div>
+                    <div className="w-9 text-center text-[11px] tabular-nums shrink-0">
+                      {p.assists}
+                    </div>
+                    <div className="w-9 text-center text-[11px] tabular-nums shrink-0">
+                      {pts}
+                    </div>
+                    <div className="w-12 text-center text-[11px] tabular-nums shrink-0">
+                      {p.toi}
+                    </div>
+                    <div className="w-11 text-center text-[11px] tabular-nums shrink-0">
+                      {p.shots}
+                    </div>
+                    <div className="w-11 text-center text-[11px] tabular-nums shrink-0">
+                      {p.pim}
+                    </div>
+                    <div className="w-12 font-display text-sm text-green text-center leading-none shrink-0">
+                      {p.fantasyPoints}
+                    </div>
+                    <div
+                      className={`w-4 h-4 rounded-full border flex items-center justify-center text-[9px] shrink-0 ${
+                        isPicked
+                          ? "bg-green text-bg border-green"
+                          : "border-border text-muted"
+                      }`}
+                    >
+                      {isPicked ? "✓" : "+"}
+                    </div>
+                  </button>
+                );
+              })}
+              {visible.length === 0 && (
+                <div className="p-3 text-center text-muted text-[10px]">
+                  No players match that filter.
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 
@@ -361,25 +422,37 @@ function SlotBox({
   label,
   have,
   need,
+  active,
+  onClick,
 }: {
   label: string;
   have: number;
   need: number;
+  active?: boolean;
+  onClick?: () => void;
 }) {
   const full = have >= need && need > 0;
+  // Border priority: active filter > full > default
+  const border = active
+    ? "border-text bg-panel2"
+    : full
+    ? "border-green/40 bg-green/5"
+    : "border-border bg-bg";
+  const valueColor = active ? "text-text" : full ? "text-green" : "";
   return (
-    <div
-      className={`rounded border px-1.5 py-0.5 flex items-center gap-0.5 ${
-        full ? "border-green/40 bg-green/5" : "border-border bg-bg"
-      }`}
+    <button
+      type="button"
+      onClick={onClick}
+      title={active ? `Clear ${label} filter` : `Show ${label} only`}
+      className={`rounded border px-1.5 py-0.5 flex items-center gap-0.5 transition hover:bg-panel2 ${border}`}
     >
       <span className="text-[9px] uppercase tracking-wider text-muted">
         {label}
       </span>
-      <span className={`font-display text-[11px] leading-none ${full ? "text-green" : ""}`}>
+      <span className={`font-display text-[11px] leading-none ${valueColor}`}>
         {have}/{need}
       </span>
-    </div>
+    </button>
   );
 }
 
