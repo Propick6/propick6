@@ -1,5 +1,5 @@
 # Pro Pick 6 — Project Context File
-*Last updated: April 25, 2026 (Token rename, leaderboard wireframe + sport filter, PWA install, Follow feature with Following feed tab)*
+*Last updated: April 25, 2026 (Token rename, leaderboard wireframe + sport filter, PWA install, Follow feature, +Pick wired to DB with ESPN game picker)*
 
 ---
 
@@ -134,6 +134,16 @@ Platform nets:    ~$1.85 per unlock
 - Report-user flow: `reports` table with RLS + Report modal on profile. Reports write to DB. **Admin review page + email notifications still TODO.**
 - Supabase MCP now authorized for Propick6 — SQL/migrations/seeds run directly from Claude.
 
+### Phase 2.8 — +Pick wired end-to-end ✅ (2026-04-25)
+- New `lib/espnGames.ts` — fetches today + next 4 days of games for NBA / NFL / NHL / MLB from ESPN's free public scoreboard API (`site.api.espn.com/apis/site/v2/sports/{sport}/{league}/scoreboard`). No API key, CORS-friendly. Parallel fetches across the 5 days; graceful fallback to empty array on any failure so the form still works manually.
+- `/pick` page rewritten:
+  - Auth-gated — signed-out users see a sign-in CTA instead of the form.
+  - Today's pick count read live from the `picks` table (was hardcoded `submitted=2`).
+  - "Sport" relabeled "League." For NBA/NFL/NHL/MLB the form now shows a clickable list of upcoming games grouped by Today / Tomorrow / day-of-week. Tapping a game auto-fills the matchup field; finished games are disabled; live games are flagged.
+  - Other sports (NCAAF/NCAAB/UFC/Soccer) keep the manual matchup text input — no game picker.
+  - Post Pick now actually inserts into the `picks` table with the signed-in user as `seller_id`. RLS on `picks` enforces this server-side.
+  - Success toast + error surface inline; submit button shows "Posting…" during the round-trip; counter increments on success.
+
 ### Phase 2.7 — Follow feature ✅ (2026-04-25)
 - New `follows` table (PK `follower_id, followed_id`, cascade-delete on auth.users, no_self_follow CHECK constraint). Migration: `supabase/2026-04-25_follows.sql`.
 - New denormalized `profiles.follower_count` int column kept in sync by an `after insert/delete` trigger on `follows` — gives O(1) public counts without exposing the follower list.
@@ -154,7 +164,7 @@ Platform nets:    ~$1.85 per unlock
 - `/pools/[id]/settings` — owner-only update (RLS already enforces; UI needs owner-check)
 - `/pools/[id]/team` — write picks to `pool_entries` + `pool_entry_players`
 - Unlock mechanic — persist to `unlocks` table, deduct `unlock_tokens`, credit `earn_tokens`. Core money loop.
-- +Pick page — wire the form to INSERT into `picks` so real users can actually post picks
+- ~~+Pick page — wire the form to INSERT into `picks` so real users can actually post picks~~ ✅ shipped 2026-04-25 with ESPN game picker
 - Admin reports review page — gated by `is_admin` on profiles
 - Leaderboard + My Stats + Wallet pages — still on mock data
 - **Consensus Picks page (`/consensus`) + 🟢 Free Token** — designed 2026-04-25, full spec in auto-memory. Build TBD.
@@ -256,6 +266,7 @@ Mikes Pro Picks/
     ├── lib/
     │   ├── mockData.ts         (picks marketplace mock data — incl. extraLeaders for leaderboard pagination demo)
     │   ├── poolMockData.ts     (NHL players + pool types + helpers)
+    │   ├── espnGames.ts        (ESPN scoreboard fetcher — NBA/NFL/NHL/MLB upcoming games for the +Pick form)
     │   └── supabase/
     │       ├── client.ts       (browser client)
     │       ├── server.ts       (server components + route handlers)
