@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import SearchModal from "@/components/SearchModal";
 
 const links = [
   { href: "/", label: "Feed" },
@@ -24,6 +25,7 @@ export default function Nav() {
   const path = usePathname();
   const [signedIn, setSignedIn] = useState<boolean | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [searchOpen, setSearchOpen] = useState(false);
 
   useEffect(() => {
     const supabase = createClient();
@@ -87,8 +89,16 @@ export default function Nav() {
           })}
         </nav>
 
-        {/* Right side: token chips + sign-in/out */}
+        {/* Right side: search + token chips + sign-in/out */}
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => setSearchOpen(true)}
+            aria-label="Search cappers"
+            title="Search cappers"
+            className="w-8 h-8 flex items-center justify-center rounded-full border border-border bg-panel text-muted hover:text-text hover:border-green transition text-sm"
+          >
+            🔍
+          </button>
           {signedIn && profile && (
             <Link
               href="/wallet"
@@ -133,6 +143,7 @@ export default function Nav() {
           )}
         </div>
       </div>
+      <SearchModal open={searchOpen} onClose={() => setSearchOpen(false)} />
       <div className="md:hidden border-t border-border">
         <div className="max-w-5xl mx-auto px-2 py-2 flex gap-1 overflow-x-auto no-scrollbar text-xs">
           {links.map((l) => {

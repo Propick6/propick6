@@ -134,6 +134,10 @@ Platform nets:    ~$1.85 per unlock
 - Report-user flow: `reports` table with RLS + Report modal on profile. Reports write to DB. **Admin review page + email notifications still TODO.**
 - Supabase MCP now authorized for Propick6 — SQL/migrations/seeds run directly from Claude.
 
+### Phase 2.9 — Capper search ✅ (2026-04-25)
+- New `components/SearchModal.tsx` — full-overlay modal with debounced (250ms) Supabase autocomplete: `profiles.handle ilike 'X%' order by handle asc limit 10`. ilike metachars (%, _, \\) sanitized from user input. Click result → `/u/[handle]`. Esc closes.
+- `components/Nav.tsx` got a 🔍 button next to the token chips that opens the modal. Visible regardless of auth state — anyone can search.
+
 ### Phase 2.8 — +Pick wired end-to-end ✅ (2026-04-25)
 - New `lib/espnGames.ts` — fetches today + next 4 days of games for NBA / NFL / NHL / MLB from ESPN's free public scoreboard API (`site.api.espn.com/apis/site/v2/sports/{sport}/{league}/scoreboard`). No API key, CORS-friendly. Parallel fetches across the 5 days; graceful fallback to empty array on any failure so the form still works manually.
 - `/pick` page rewritten:
