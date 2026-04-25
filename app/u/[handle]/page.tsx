@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
@@ -14,6 +15,7 @@ type Profile = {
   pushes: number;
   roi: number;
   created_at: string | null;
+  follower_count: number;
 };
 
 type OwnedPool = {
@@ -39,6 +41,7 @@ export default function ProfilePage({
   params: { handle: string };
 }) {
   const handleParam = decodeURIComponent(params.handle);
+  const router = useRouter();
   const supabase = createClient();
 
   const [loading, setLoading] = useState(true);
@@ -48,6 +51,11 @@ export default function ProfilePage({
   const [activeTodayCount, setActiveTodayCount] = useState(0);
   const [isSelf, setIsSelf] = useState(false);
   const [copied, setCopied] = useState(false);
+
+  // Follow state
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [followBusy, setFollowBusy] = useState(false);
+  const [signedIn, setSignedIn] = useState(false);
 
   // Report modal state
   const [reportOpen, setReportOpen] = useState(false);
@@ -65,7 +73,9 @@ export default function ProfilePage({
       // 1. Look up the profile by handle
       const { data: p } = await supabase
         .from("profiles")
-        .select("id, handle, display_name, sport, wins, losses, pushes, roi, created_at")
+        .select(
+          "id, handle, display_name, sport, wins, losses, pushes, roi, created_at, follower_count"
+        )
         .eq("handle", handleParam)
         .maybeSingle();
 
@@ -103,11 +113,24 @@ export default function ProfilePage({
         setActiveTodayCount(activeCount ?? 0);
       }
 
-      // 5. Am I looking at my own profile?
+      // 5. Am I signed in? Looking at my own profile? Already following them?
       const {
         data: { user },
       } = await supabase.auth.getUser();
+      setSignedIn(!!user);
       if (user && p && user.id === p.id) setIsSelf(true);
+
+      // RLS only returns my own follow rows, so this query simply checks if a
+      // (me, them) row exists. If signed out, RLS returns nothing → not following.
+      if (user && p && user.id !== p.id) {
+        const { data: existing } = await supabase
+          .from("follows")
+          .select("follower_id")
+          .eq("follower_id", user.id)
+          .eq("followed_id", p.id)
+          .maybeSingle();
+        setIsFollowing(!!existing);
+      }
 
       setLoading(false);
     }
@@ -165,8 +188,64 @@ export default function ProfilePage({
     }
   }
 
-  function onFollow() {
-    alert("Following isn't wired up yet — coming in a future round.");
+  async function onFollow() {
+    if (!profile) return;
+
+    // Bounce signed-out users to sign-in, with redirect-back so they land
+    // on the same profile after authenticating.
+    if (!signedIn) {
+      router.push(`/signin?next=/u/${profile.handle}`);
+      return;
+    }
+
+    if (followBusy) return;
+    setFollowBusy(true);
+
+    const wasFollowing = isFollowing;
+    const originalProfile = profile;
+
+    // Optimistic UI update — flip immediately so the button feels snappy.
+    setIsFollowing(!wasFollowing);
+    setProfile({
+      ...originalProfile,
+      follower_count: Math.max(
+        0,
+        originalProfile.follower_count + (wasFollowing ? -1 : 1)
+      ),
+    });
+
+    const rollback = () => {
+      setIsFollowing(wasFollowing);
+      setProfile(originalProfile);
+    };
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      // Edge case: session expired between mount and click.
+      rollback();
+      setFollowBusy(false);
+      router.push(`/signin?next=/u/${originalProfile.handle}`);
+      return;
+    }
+
+    const { error } = wasFollowing
+      ? await supabase
+          .from("follows")
+          .delete()
+          .eq("follower_id", user.id)
+          .eq("followed_id", originalProfile.id)
+      : await supabase.from("follows").insert({
+          follower_id: user.id,
+          followed_id: originalProfile.id,
+        });
+
+    if (error) {
+      rollback();
+      // For now log to console; next click can retry.
+      console.error("Follow toggle failed:", error);
+    }
+
+    setFollowBusy(false);
   }
 
   async function openReport() {
@@ -256,6 +335,12 @@ export default function ProfilePage({
                   { month: "short", year: "numeric" }
                 )}`}
             </div>
+            <div className="text-xs text-muted mt-1">
+              <span className="font-semibold text-text">
+                {profile.follower_count.toLocaleString()}
+              </span>{" "}
+              follower{profile.follower_count === 1 ? "" : "s"}
+            </div>
           </div>
         </div>
 
@@ -268,10 +353,20 @@ export default function ProfilePage({
             >
               Edit profile
             </Link>
+          ) : isFollowing ? (
+            <button
+              onClick={onFollow}
+              disabled={followBusy}
+              className="group border border-green text-green hover:bg-hot/10 hover:border-hot hover:text-hot font-semibold px-4 py-2 rounded-full text-sm transition disabled:opacity-60"
+            >
+              <span className="group-hover:hidden">✓ Following</span>
+              <span className="hidden group-hover:inline">Unfollow</span>
+            </button>
           ) : (
             <button
               onClick={onFollow}
-              className="bg-green text-bg font-semibold px-4 py-2 rounded-full text-sm shadow-glow"
+              disabled={followBusy}
+              className="bg-green text-bg font-semibold px-4 py-2 rounded-full text-sm shadow-glow disabled:opacity-60"
             >
               Follow
             </button>

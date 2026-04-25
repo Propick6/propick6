@@ -48,6 +48,11 @@ export default function FeedPage() {
   const [expanded, setExpanded] = useState<string | null>(null);
   const [unlocked, setUnlocked] = useState<Record<string, boolean>>({});
 
+  // Following filter state
+  const [viewMode, setViewMode] = useState<"all" | "following">("all");
+  const [signedIn, setSignedIn] = useState(false);
+  const [followedIds, setFollowedIds] = useState<Set<string>>(new Set());
+
   useEffect(() => {
     async function load() {
       const supabase = createClient();
@@ -126,24 +131,46 @@ export default function FeedPage() {
 
       setFeed(visible);
       setHiddenCount(hidden);
+
+      // 3. Pull the current user's follows so the Following tab can filter.
+      //    RLS only returns my own rows, so this is a small query.
+      const { data: { user } } = await supabase.auth.getUser();
+      setSignedIn(!!user);
+      if (user) {
+        const { data: myFollows } = await supabase
+          .from("follows")
+          .select("followed_id")
+          .eq("follower_id", user.id);
+        setFollowedIds(
+          new Set((myFollows ?? []).map((r) => r.followed_id as string))
+        );
+      }
+
       setLoading(false);
     }
     load();
   }, []);
 
+  // Filtered feed for the active tab.
+  const displayed =
+    viewMode === "all"
+      ? feed
+      : feed.filter((c) => followedIds.has(c.id));
+
+  // Stats reflect the active tab — switching to Following recomputes them.
   const stats = useMemo(() => {
-    const cappersOut = feed.length;
+    const cappersOut = displayed.length;
     const topWin =
-      feed.length > 0
+      displayed.length > 0
         ? Math.max(
-            ...feed.map((c) => {
+            ...displayed.map((c) => {
               const total = c.wins + c.losses;
               return total > 0 ? (c.wins / total) * 100 : 0;
             })
           )
         : 0;
     return { cappersOut, topWin };
-  }, [feed]);
+  }, [displayed]);
 
   return (
     <div className="space-y-4">
@@ -183,21 +210,73 @@ export default function FeedPage() {
         <div className="text-3xl">🏀</div>
       </div>
 
-      <h2 className="font-display text-2xl pt-2">TODAY&apos;S LINEUP</h2>
+      <div className="flex items-center justify-between flex-wrap gap-3 pt-2">
+        <h2 className="font-display text-2xl">
+          {viewMode === "following" ? "FROM YOUR FOLLOWING" : "TODAY'S LINEUP"}
+        </h2>
+        {/* All / Following tabs */}
+        <div className="flex gap-1 bg-panel p-1 rounded-full border border-border">
+          <button
+            onClick={() => setViewMode("all")}
+            className={`px-4 py-1.5 rounded-full text-sm transition ${
+              viewMode === "all"
+                ? "bg-green text-bg font-semibold"
+                : "text-muted hover:text-text"
+            }`}
+          >
+            All
+          </button>
+          <button
+            onClick={() => setViewMode("following")}
+            className={`px-4 py-1.5 rounded-full text-sm transition ${
+              viewMode === "following"
+                ? "bg-green text-bg font-semibold"
+                : "text-muted hover:text-text"
+            }`}
+          >
+            Following
+          </button>
+        </div>
+      </div>
 
       {/* Capper feed */}
       {loading ? (
         <div className="text-center text-muted text-sm py-10">
           Loading today&apos;s board…
         </div>
-      ) : feed.length === 0 ? (
+      ) : viewMode === "following" && !signedIn ? (
+        <div className="text-center text-sm py-10 border border-dashed border-border rounded-xl">
+          <p className="text-muted">
+            Sign in to see picks from cappers you follow.
+          </p>
+          <Link
+            href="/signin?next=/"
+            className="inline-block mt-3 bg-green text-bg font-semibold px-4 py-2 rounded-full text-sm"
+          >
+            Sign in
+          </Link>
+        </div>
+      ) : viewMode === "following" && followedIds.size === 0 ? (
+        <div className="text-center text-sm py-10 border border-dashed border-border rounded-xl">
+          <p className="text-muted">
+            You&apos;re not following anyone yet.
+          </p>
+          <Link
+            href="/leaderboard"
+            className="inline-block mt-3 border border-border text-muted hover:text-text px-4 py-2 rounded-full text-sm"
+          >
+            Browse the leaderboard →
+          </Link>
+        </div>
+      ) : displayed.length === 0 ? (
         <div className="text-center text-muted text-sm py-10 border border-dashed border-border rounded-xl">
-          No cappers have posted {MIN_PICKS_TO_APPEAR}+ picks today yet. Check
-          back later.
+          {viewMode === "following"
+            ? `None of the cappers you follow have posted ${MIN_PICKS_TO_APPEAR}+ picks today yet.`
+            : `No cappers have posted ${MIN_PICKS_TO_APPEAR}+ picks today yet. Check back later.`}
         </div>
       ) : (
         <div className="space-y-3">
-          {feed.map((c) => {
+          {displayed.map((c) => {
             const isOpen = expanded === c.id;
             const isUnlocked = !!unlocked[c.id];
             const status = cappersStatus(c);
@@ -326,8 +405,8 @@ export default function FeedPage() {
         </div>
       )}
 
-      {/* Hidden cappers note */}
-      {!loading && hiddenCount > 0 && (
+      {/* Hidden cappers note — only relevant on the All tab */}
+      {!loading && viewMode === "all" && hiddenCount > 0 && (
         <div className="text-xs text-muted text-center pt-2">
           {hiddenCount} capper{hiddenCount === 1 ? "" : "s"} hidden today —
           fewer than {MIN_PICKS_TO_APPEAR} picks posted.

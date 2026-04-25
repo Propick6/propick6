@@ -1,5 +1,5 @@
 # Pro Pick 6 — Project Context File
-*Last updated: April 25, 2026 (Token rename, leaderboard wireframe + sport filter, PWA install support, Consensus Picks spec captured)*
+*Last updated: April 25, 2026 (Token rename, leaderboard wireframe + sport filter, PWA install, Follow feature with Following feed tab)*
 
 ---
 
@@ -134,6 +134,13 @@ Platform nets:    ~$1.85 per unlock
 - Report-user flow: `reports` table with RLS + Report modal on profile. Reports write to DB. **Admin review page + email notifications still TODO.**
 - Supabase MCP now authorized for Propick6 — SQL/migrations/seeds run directly from Claude.
 
+### Phase 2.7 — Follow feature ✅ (2026-04-25)
+- New `follows` table (PK `follower_id, followed_id`, cascade-delete on auth.users, no_self_follow CHECK constraint). Migration: `supabase/2026-04-25_follows.sql`.
+- New denormalized `profiles.follower_count` int column kept in sync by an `after insert/delete` trigger on `follows` — gives O(1) public counts without exposing the follower list.
+- Privacy: RLS on `follows` lets a user SELECT/INSERT/DELETE only rows where they are the follower. Nobody else can enumerate who follows whom; only the count is public via `profiles.follower_count`.
+- `/u/[handle]` page: real Follow / Following toggle (was a stub alert), follower count under the joined-date row, optimistic UI with rollback on error, signed-out users bounce to `/signin?next=/u/<handle>`.
+- Home Feed: new "All / Following" tab pill above today's lineup. Following mode filters cappers to those the user follows. Empty states handle (1) signed-out, (2) following nobody, (3) following somebody but none of them met today's 6-pick threshold.
+
 ### Phase 2.6 — UX polish + Stanley Cup pool + PWA install ✅ (2026-04-24 → 2026-04-25)
 - **Stanley Cup Playoff Pool prototype** at `/pools/stanley-cup` — clickable bracket (auto-advance + games-per-series picker 4/5/6/7) + 20-player roster from all 16 actual 2026 playoff teams (~352 mock players). Bracket-bonus + player-points scoring legend. Local state only — DB persistence + per-pool brackets are next.
 - **Leaderboard wireframe redesign** — columns now Place / User (with hot/cold emoji) / Record / Win% / Last 6 / Picks (eyeball icon link to `/u/[handle]` when capper has 6+ picks today). ROI dropped from view (still on type for future use). Pagination at 10/page (Page 1/2/3/Next/Last). Mock data padded with 25 extra leaders so 3 pages render convincingly.
@@ -257,7 +264,8 @@ Mikes Pro Picks/
         ├── schema.sql                              ← base: profiles/picks/unlocks/transactions/advertisers + trigger
         ├── pools_schema.sql                        ← pools module tables + RLS + leaderboard view
         ├── seed_nhl_players.sql                    ← 52 NHL players
-        ├── 2026-04-24_pools_has_bracket.sql        ← migration: pools.has_bracket flag for bracket-enabled pools
+        ├── 2026-04-24_pools_has_bracket.sql        ← migration: pools.has_bracket flag
+        ├── 2026-04-25_follows.sql                  ← migration: follows table + RLS + profiles.follower_count + trigger
         └── (other seed files: demo cappers, demo picks, etc.)
 ```
 
