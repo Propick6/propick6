@@ -11,6 +11,7 @@ import {
   type NhlPlayer,
   type Position,
 } from "@/lib/poolMockData";
+import { playoffPlayers } from "@/lib/playoffRosters";
 
 export default function BuildTeamPage({
   params,
@@ -33,24 +34,40 @@ export default function BuildTeamPage({
   const [saved, setSaved] = useState(false);
 
   // Pull the live pool row from Supabase so we know if this pool has the
-  // optional NHL Playoff Bracket module enabled. Fail-soft: if the fetch
-  // errors or the column doesn't exist we just don't show the card.
+  // optional NHL Playoff Bracket module enabled and whether it's a playoff
+  // pool (which restricts the player pool to the 16 playoff teams).
+  // Fail-soft: if the fetch errors we just fall back to defaults.
   const [hasBracket, setHasBracket] = useState<boolean>(false);
+  const [dbDuration, setDbDuration] = useState<string | null>(null);
   useEffect(() => {
     const supabase = createClient();
     let cancelled = false;
     supabase
       .from("pools")
-      .select("has_bracket")
+      .select("has_bracket, duration")
       .eq("id", id)
       .maybeSingle()
       .then(({ data }) => {
-        if (!cancelled && data?.has_bracket) setHasBracket(true);
+        if (cancelled || !data) return;
+        if (data.has_bracket) setHasBracket(true);
+        if (data.duration) setDbDuration(data.duration);
       });
     return () => {
       cancelled = true;
     };
   }, [id]);
+
+  // Restrict the player list to the 16 playoff teams when this is a playoff
+  // pool OR when the bracket module is enabled. Otherwise, regular-season
+  // pools draw from the full league pool.
+  const samplePool = samplePools.find((p) => p.id === id);
+  const isPlayoffContext =
+    hasBracket ||
+    dbDuration === "playoffs" ||
+    samplePool?.duration === "playoffs";
+  const playerSource: NhlPlayer[] = isPlayoffContext
+    ? playoffPlayers
+    : nhlPlayers;
 
   const slotCounts = {
     F: pool.roster.forwards,
@@ -60,15 +77,15 @@ export default function BuildTeamPage({
 
   const pickedBy: Record<Position, NhlPlayer[]> = useMemo(() => {
     const acc: Record<Position, NhlPlayer[]> = { F: [], D: [], G: [] };
-    for (const p of nhlPlayers) {
+    for (const p of playerSource) {
       if (picks.has(p.id)) acc[p.position].push(p);
     }
     return acc;
-  }, [picks]);
+  }, [picks, playerSource]);
 
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return nhlPlayers
+    return playerSource
       .filter((p) => (filter === "all" ? true : p.position === filter))
       .filter(
         (p) =>
@@ -78,7 +95,7 @@ export default function BuildTeamPage({
       )
       .map((p) => ({ ...p, fantasyPoints: scorePlayer(p, pool.scoring) }))
       .sort((a, b) => b.fantasyPoints - a.fantasyPoints);
-  }, [filter, query, pool]);
+  }, [filter, query, pool, playerSource]);
 
   function togglePick(p: NhlPlayer) {
     const next = new Set(picks);
@@ -236,10 +253,19 @@ export default function BuildTeamPage({
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search name or team…"
+          placeholder={
+            isPlayoffContext
+              ? "Search playoff teams only…"
+              : "Search name or team…"
+          }
           className="flex-1 min-w-[120px] bg-panel border border-border rounded px-2 py-0.5 text-[10px]"
         />
       </div>
+      {isPlayoffContext && (
+        <p className="text-[9px] text-muted -mt-1.5 ml-1">
+          Playoff pool — only players on the 16 playoff teams are eligible
+        </p>
+      )}
 
       {/* Player list — denser rows */}
       <div className="rounded border border-border bg-panel overflow-hidden">
