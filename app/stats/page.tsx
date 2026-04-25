@@ -3,9 +3,9 @@ import { currentUser } from "@/lib/mockData";
 export default function StatsPage() {
   // Mock monthly earnings
   const unlocks = 42;
-  const earnTokensAwarded = 42;
+  const redeemTokensEarned = 42;
   const cashWithdrawn = 90;
-  const conversions = 15; // earn tokens converted
+  const conversions = 15; // redeem tokens converted
   const grossRake = unlocks * 2;
 
   return (
@@ -31,19 +31,19 @@ export default function StatsPage() {
         <Kpi label="Record" value={currentUser.record} />
         <Kpi label="Win Rate" value={`${currentUser.winRate.toFixed(1)}%`} accent />
         <Kpi label="Rank" value={`#${currentUser.rank}`} />
-        <Kpi label="Earn 🔵" value={currentUser.earnTokens.toString()} />
+        <Kpi label="Redeem 🔵" value={currentUser.redeemTokens.toString()} />
       </div>
 
       {/* Monthly earnings breakdown */}
       <section className="rounded-xl border border-border bg-panel p-4">
         <h2 className="font-display text-xl mb-3">APRIL EARNINGS</h2>
         <Row k="Cards unlocked by buyers" v={`${unlocks}`} />
-        <Row k="🔵 Earn Tokens awarded" v={`${earnTokensAwarded} (${earnTokensAwarded * 3} cash value)`} />
+        <Row k="🔵 Redeem Tokens earned" v={`${redeemTokensEarned} (${redeemTokensEarned * 3} cash value)`} />
         <Row k="Cash withdrawn via Stripe" v={`$${cashWithdrawn}.00`} />
         <Row k="Converted 🔵 → 🟡" v={`${conversions} 🔵`} />
         <Row
-          k="Remaining 🔵 balance"
-          v={`${currentUser.earnTokens} 🔵 ($${currentUser.earnTokens * 3})`}
+          k="Remaining 🔵 Redeem Tokens"
+          v={`${currentUser.redeemTokens} 🔵 ($${currentUser.redeemTokens * 3})`}
         />
         <div className="border-t border-border my-3" />
         <Row

@@ -143,10 +143,10 @@ export default function PickPage() {
       {/* Earn info */}
       <div className="rounded-xl border border-blue/30 bg-blue/5 p-4 text-sm">
         <div className="text-blue font-semibold flex items-center gap-2 mb-1">
-          🔵 Earn Token
+          🔵 Redeem Token
         </div>
         <div className="text-muted">
-          Every time a buyer unlocks your card, you earn 1 🔵 Earn Token ($3
+          Every time a buyer unlocks your card, you earn 1 🔵 Redeem Token ($3
           cash value). Cash out anytime via Stripe or convert 5 🔵 into 3 🟡
           Unlock Tokens.
         </div>

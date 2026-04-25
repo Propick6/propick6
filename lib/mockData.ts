@@ -28,7 +28,10 @@ export type Capper = {
 export const currentUser = {
   handle: "you",
   unlockTokens: 4,
-  earnTokens: 12,
+  // Renamed from earnTokens 2026-04-25 — labeled "Redeem Tokens" in UI.
+  // The blue token is now called Redeem (was Earn) since users redeem it
+  // for cash via Stripe or convert it to Unlock Tokens.
+  redeemTokens: 12,
   record: "8-5",
   winRate: 61.5,
   rank: 23,
@@ -184,7 +187,7 @@ export const tokenBundles = [
 export const transactions = [
   { id: "t1", date: "Apr 22", kind: "Bundle purchase", detail: "5 🟡 bundle", amount: "-$25.00" },
   { id: "t2", date: "Apr 22", kind: "Unlock", detail: "SharpMike's card", amount: "-1 🟡" },
-  { id: "t3", date: "Apr 21", kind: "Earn token", detail: "Your card unlocked", amount: "+1 🔵" },
+  { id: "t3", date: "Apr 21", kind: "Redeem token", detail: "Your card unlocked", amount: "+1 🔵" },
   { id: "t4", date: "Apr 21", kind: "Conversion", detail: "5 🔵 → 3 🟡", amount: "+3 🟡" },
   { id: "t5", date: "Apr 20", kind: "Withdrawal", detail: "To bank (Stripe)", amount: "-$9.00" },
 ];

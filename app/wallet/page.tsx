@@ -4,8 +4,8 @@ import { useState } from "react";
 import { currentUser, tokenBundles, transactions } from "@/lib/mockData";
 
 export default function WalletPage() {
-  const [convertSteps, setConvertSteps] = useState(1); // each step = 5 earn → 3 unlock
-  const maxSteps = Math.floor(currentUser.earnTokens / 5);
+  const [convertSteps, setConvertSteps] = useState(1); // each step = 5 redeem → 3 unlock
+  const maxSteps = Math.floor(currentUser.redeemTokens / 5);
 
   return (
     <div className="space-y-5">
@@ -15,7 +15,7 @@ export default function WalletPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <div className="rounded-xl border border-gold/40 bg-gradient-to-br from-gold/10 to-transparent p-4">
           <div className="text-xs uppercase tracking-wider text-gold">
-            🟡 Unlock Balance
+            🟡 Unlock Tokens
           </div>
           <div className="font-display text-4xl mt-1">
             {currentUser.unlockTokens}
@@ -26,13 +26,13 @@ export default function WalletPage() {
         </div>
         <div className="rounded-xl border border-blue/40 bg-gradient-to-br from-blue/10 to-transparent p-4">
           <div className="text-xs uppercase tracking-wider text-blue">
-            🔵 Earn Balance
+            🔵 Redeem Tokens
           </div>
           <div className="font-display text-4xl mt-1">
-            {currentUser.earnTokens}
+            {currentUser.redeemTokens}
           </div>
           <div className="text-sm text-muted">
-            ≈ ${currentUser.earnTokens * 3}.00 cash value
+            ≈ ${currentUser.redeemTokens * 3}.00 cash value
           </div>
         </div>
       </div>
@@ -70,14 +70,14 @@ export default function WalletPage() {
         <div className="rounded-xl border border-border bg-panel p-4 space-y-3">
           <div className="font-display text-xl">WITHDRAW TO CASH</div>
           <div className="text-sm text-muted">
-            Convert your 🔵 Earn Tokens into real money via Stripe. No minimum.
+            Convert your 🔵 Redeem Tokens into real money via Stripe. No minimum.
           </div>
           <div className="flex items-center justify-between bg-panel2 rounded-lg p-3">
             <span className="text-sm">
-              Withdraw all {currentUser.earnTokens} 🔵
+              Withdraw all {currentUser.redeemTokens} 🔵
             </span>
             <span className="font-semibold">
-              ${currentUser.earnTokens * 3}.00
+              ${currentUser.redeemTokens * 3}.00
             </span>
           </div>
           <button className="w-full bg-blue text-bg font-semibold py-2.5 rounded-full">

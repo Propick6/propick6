@@ -35,16 +35,16 @@ A sports picks marketplace called **Pro Pick 6** where cappers (sellers) post da
 - Never expire
 - Bundle sizes available: 1/$5, 5/$25 (most popular), 10/$50, 20/$100
 
-### Earn Tokens (blue)
+### Redeem Tokens (blue) — formerly "Earn Tokens", renamed 2026-04-25
 - Value: **$3 cash each**
-- How earned: Sellers receive 1 Earn Token every time someone unlocks their day card
+- How earned: Sellers receive 1 Redeem Token every time someone unlocks their day card
 - Never expire
 - Two options for sellers:
   1. Cash out at $3 per token via Stripe (anytime, no minimum)
   2. Convert to Unlock Tokens — only in increments of 5
 
-### Conversion Rate (Earn → Unlock)
-- **5 Earn Tokens → 3 Unlock Tokens** (even $15-for-$15 exchange, $0 rake on conversion)
+### Conversion Rate (Redeem → Unlock)
+- **5 Redeem Tokens → 3 Unlock Tokens** (even $15-for-$15 exchange, $0 rake on conversion)
 - Steps: 10 → 6, 15 → 9, 20 → 12, etc.
 - Only moves in steps of 5 — no partial conversions
 
@@ -59,7 +59,7 @@ A sports picks marketplace called **Pro Pick 6** where cappers (sellers) post da
 ## Money Flow Per Transaction
 ```
 Buyer spends:     1 Unlock Token   = $5.00
-Seller receives:  1 Earn Token     = $3.00 cash value
+Seller receives:  1 Redeem Token   = $3.00 cash value
 Platform keeps:   $2.00 rake
 Stripe fee:       ~$0.15 (from platform's cut)
 Platform nets:    ~$1.85 per unlock

@@ -95,12 +95,19 @@ export default function Nav() {
               className="flex items-center gap-2"
               aria-label="Open wallet"
             >
-              <span className="flex items-center gap-1 bg-panel border border-border rounded-full px-2.5 py-1 text-sm">
+              <span
+                className="flex items-center gap-1 bg-panel border border-border rounded-full px-2.5 py-1 text-sm"
+                title="Unlock Tokens"
+              >
                 <span className="text-gold">🟡</span>
                 <span className="font-semibold">{profile.unlock_tokens}</span>
               </span>
-              <span className="flex items-center gap-1 bg-panel border border-border rounded-full px-2.5 py-1 text-sm">
+              <span
+                className="flex items-center gap-1 bg-panel border border-border rounded-full px-2.5 py-1 text-sm"
+                title="Redeem Tokens"
+              >
                 <span className="text-blue">🔵</span>
+                {/* DB column is still earn_tokens — labeled "Redeem Tokens" in UI per 2026-04-25 rename. */}
                 <span className="font-semibold">{profile.earn_tokens}</span>
               </span>
             </Link>

@@ -5,7 +5,7 @@ Daily sports picks marketplace — cappers post pick cards, buyers unlock them w
 ## Token Economy
 
 - 🟡 **Unlock Token** — $5, used to unlock a capper's full day card. Bundles: 1/5/10/20.
-- 🔵 **Earn Token** — $3 cash value, awarded to sellers per unlock.
+- 🔵 **Redeem Token** — $3 cash value, awarded to sellers per unlock. (Renamed from "Earn Token" 2026-04-25.)
 - Rake: $2 per unlock (platform). $0 on 🔵 → 🟡 conversions.
 - Conversion: 5 🔵 → 3 🟡, only in increments of 5.
 - Rules: 6-pick daily minimum to appear in feed, picks expire at midnight.
@@ -24,7 +24,7 @@ Daily sports picks marketplace — cappers post pick cards, buyers unlock them w
 
 **Phase 2:** Wire Supabase auth + database. Real user accounts, real pick submissions, real token balances.
 
-**Phase 3:** Wire Stripe (test mode) for token bundle purchases and earn-token cash-out.
+**Phase 3:** Wire Stripe (test mode) for token bundle purchases and redeem-token cash-out.
 
 **Phase 4:** Leaderboard computed from real data, advertiser onboarding, webhooks.
 
@@ -39,6 +39,6 @@ No environment variables are required for Phase 1.
 
 ## Brand
 
-- Background `#07090D`, green accent `#00E676`, gold (unlock) `#FFD700`, blue (earn) `#00C2FF`
+- Background `#07090D`, green accent `#00E676`, gold (unlock) `#FFD700`, blue (redeem) `#00C2FF`
 - Fonts: Bebas Neue (display), DM Sans (body)
 - Promo code: `PROPICK6`
