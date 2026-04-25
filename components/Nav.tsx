@@ -134,9 +134,12 @@ export default function Nav() {
 
           {signedIn && (
             <Link
-              href="/account"
+              // Goes to your PUBLIC profile (stats + followers + track record).
+              // Edit-account is one click away via the "Edit account" button there.
+              // Falls back to /account when handle isn't set yet (new accounts).
+              href={profile?.handle ? `/u/${profile.handle}` : "/account"}
               className="text-xs text-muted hover:text-text border border-border rounded-full px-2.5 py-1"
-              title="Account settings"
+              title="Your profile"
             >
               {profile?.handle ? `@${profile.handle}` : "Account"}
             </Link>

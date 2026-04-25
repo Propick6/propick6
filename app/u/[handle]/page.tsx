@@ -351,7 +351,7 @@ export default function ProfilePage({
               href="/account"
               className="bg-green text-bg font-semibold px-4 py-2 rounded-full text-sm shadow-glow"
             >
-              Edit profile
+              Edit account
             </Link>
           ) : isFollowing ? (
             <button
