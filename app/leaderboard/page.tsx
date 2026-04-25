@@ -118,7 +118,8 @@ export default function LeaderboardPage() {
 
       {/* Table */}
       <div className="rounded-xl border border-border bg-panel overflow-hidden">
-        <div className="grid grid-cols-[40px_1fr_70px_60px_60px_50px] gap-2 text-[11px] uppercase tracking-wider text-muted px-4 py-3 border-b border-border bg-panel2">
+        {/* Column header — desktop only; on mobile each row carries inline labels */}
+        <div className="hidden md:grid grid-cols-[40px_1fr_80px_70px_70px_60px] gap-2 text-[11px] uppercase tracking-wider text-muted px-4 py-3 border-b border-border bg-panel2">
           <div>Place</div>
           <div>User</div>
           <div>Record</div>
@@ -140,39 +141,85 @@ export default function LeaderboardPage() {
             return (
               <div
                 key={c.id}
-                className="grid grid-cols-[40px_1fr_70px_60px_60px_50px] gap-2 items-center px-4 py-3 border-b border-border last:border-0 text-sm"
+                className="px-4 py-3 border-b border-border last:border-0"
               >
-                <div className="font-display text-lg">{c.displayRank}</div>
-                <div className="flex items-center gap-2 min-w-0">
-                  {c.status === "hot" && (
-                    <span className="text-[12px]" aria-label="hot">🔥</span>
-                  )}
-                  {c.status === "cold" && (
-                    <span className="text-[12px]" aria-label="cold">❄️</span>
-                  )}
-                  <Link
-                    href={`/u/${c.handle}`}
-                    className="truncate font-semibold hover:text-green"
-                  >
-                    @{c.handle}
-                  </Link>
-                </div>
-                <div>{c.record}</div>
-                <div>{c.winRate.toFixed(1)}%</div>
-                <div>{c.last6}</div>
-                <div className="text-center">
-                  {hasPicksToday ? (
+                {/* MOBILE: two-row layout. Top row = place + emoji + handle + eyeball.
+                    Bottom row = stats (record · win% · L6) under the handle. */}
+                <div className="md:hidden">
+                  <div className="flex items-center gap-2.5">
+                    <span className="font-display text-lg w-6 shrink-0">
+                      {c.displayRank}
+                    </span>
+                    {c.status === "hot" && (
+                      <span className="text-[14px] shrink-0" aria-label="hot">🔥</span>
+                    )}
+                    {c.status === "cold" && (
+                      <span className="text-[14px] shrink-0" aria-label="cold">❄️</span>
+                    )}
                     <Link
                       href={`/u/${c.handle}`}
-                      title="Picks in for today — view profile"
-                      aria-label={`${c.handle} has picks in for today`}
-                      className="inline-block text-base hover:scale-110 transition-transform"
+                      className="flex-1 min-w-0 truncate font-semibold hover:text-green"
                     >
-                      👁
+                      @{c.handle}
                     </Link>
-                  ) : (
-                    <span className="text-muted opacity-30" aria-label="no picks yet">—</span>
-                  )}
+                    <div className="shrink-0 w-7 text-center">
+                      {hasPicksToday ? (
+                        <Link
+                          href={`/u/${c.handle}`}
+                          title="Picks in for today — view profile"
+                          aria-label={`${c.handle} has picks in for today`}
+                          className="inline-block text-base hover:scale-110 transition-transform"
+                        >
+                          👁
+                        </Link>
+                      ) : (
+                        <span className="text-muted opacity-30" aria-label="no picks yet">—</span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="mt-1.5 pl-9 flex items-center gap-2.5 text-xs text-muted">
+                    <span>{c.record}</span>
+                    <span className="opacity-30">·</span>
+                    <span>{c.winRate.toFixed(1)}%</span>
+                    <span className="opacity-30">·</span>
+                    <span>L6: <span className="text-text">{c.last6}</span></span>
+                  </div>
+                </div>
+
+                {/* DESKTOP: single-row grid matching the column header above */}
+                <div className="hidden md:grid grid-cols-[40px_1fr_80px_70px_70px_60px] gap-2 items-center text-sm">
+                  <div className="font-display text-lg">{c.displayRank}</div>
+                  <div className="flex items-center gap-2 min-w-0">
+                    {c.status === "hot" && (
+                      <span className="text-[12px]" aria-label="hot">🔥</span>
+                    )}
+                    {c.status === "cold" && (
+                      <span className="text-[12px]" aria-label="cold">❄️</span>
+                    )}
+                    <Link
+                      href={`/u/${c.handle}`}
+                      className="truncate font-semibold hover:text-green"
+                    >
+                      @{c.handle}
+                    </Link>
+                  </div>
+                  <div>{c.record}</div>
+                  <div>{c.winRate.toFixed(1)}%</div>
+                  <div>{c.last6}</div>
+                  <div className="text-center">
+                    {hasPicksToday ? (
+                      <Link
+                        href={`/u/${c.handle}`}
+                        title="Picks in for today — view profile"
+                        aria-label={`${c.handle} has picks in for today`}
+                        className="inline-block text-base hover:scale-110 transition-transform"
+                      >
+                        👁
+                      </Link>
+                    ) : (
+                      <span className="text-muted opacity-30" aria-label="no picks yet">—</span>
+                    )}
+                  </div>
                 </div>
               </div>
             );
