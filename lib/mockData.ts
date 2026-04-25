@@ -16,6 +16,7 @@ export type Capper = {
   record: string; // e.g. "12-4"
   winRate: number; // 0-100
   roi: number; // percentage
+  last6: string; // last 6 graded picks, e.g. "5-1"
   status: "hot" | "cold" | "neutral";
   picksPostedToday: number; // 0-10
   picks: Pick[]; // only meaningful when unlocked in real app
@@ -38,6 +39,7 @@ export const cappers: Capper[] = [
     record: "27-11",
     winRate: 71.0,
     roi: 18.4,
+    last6: "6-0",
     status: "hot",
     picksPostedToday: 8,
     picks: [
@@ -58,6 +60,7 @@ export const cappers: Capper[] = [
     record: "19-9",
     winRate: 67.9,
     roi: 14.2,
+    last6: "5-1",
     status: "hot",
     picksPostedToday: 6,
     picks: [
@@ -76,6 +79,7 @@ export const cappers: Capper[] = [
     record: "14-7",
     winRate: 66.7,
     roi: 11.0,
+    last6: "4-2",
     status: "neutral",
     picksPostedToday: 4,
     picks: [],
@@ -87,6 +91,7 @@ export const cappers: Capper[] = [
     record: "22-18",
     winRate: 55.0,
     roi: 4.2,
+    last6: "3-3",
     status: "neutral",
     picksPostedToday: 7,
     picks: [
@@ -106,6 +111,7 @@ export const cappers: Capper[] = [
     record: "9-16",
     winRate: 36.0,
     roi: -12.1,
+    last6: "1-5",
     status: "cold",
     picksPostedToday: 6,
     picks: [
@@ -117,6 +123,37 @@ export const cappers: Capper[] = [
       { id: "p6", sport: "NBA", type: "Parlay", matchup: "4-leg dog parlay", selection: "+1200" },
     ],
   },
+];
+
+// Extra mock leaders used ONLY by the leaderboard page so pagination has
+// enough rows to demo (3 pages of 10). The Feed and other pages still use
+// the 5-entry `cappers` array above.
+export const extraLeaders: Capper[] = [
+  { id: "x1", handle: "ParlayKing", sport: "NBA", record: "26-12", winRate: 68.4, roi: 16.1, last6: "5-1", status: "hot", picksPostedToday: 8, picks: [] },
+  { id: "x2", handle: "OverUnderOscar", sport: "NFL", record: "24-13", winRate: 64.9, roi: 12.8, last6: "4-2", status: "hot", picksPostedToday: 6, picks: [] },
+  { id: "x3", handle: "PuckLuckPete", sport: "NHL", record: "23-12", winRate: 65.7, roi: 11.4, last6: "5-1", status: "neutral", picksPostedToday: 7, picks: [] },
+  { id: "x4", handle: "GridironGuru", sport: "NFL", record: "22-13", winRate: 62.9, roi: 10.2, last6: "4-2", status: "neutral", picksPostedToday: 0, picks: [] },
+  { id: "x5", handle: "HoopsHarry", sport: "NBA", record: "21-14", winRate: 60.0, roi: 9.0, last6: "3-3", status: "neutral", picksPostedToday: 6, picks: [] },
+  { id: "x6", handle: "BetSlipBetty", sport: "MLB", record: "20-15", winRate: 57.1, roi: 7.5, last6: "4-2", status: "neutral", picksPostedToday: 0, picks: [] },
+  { id: "x7", handle: "DimeLineDrew", sport: "MLB", record: "19-15", winRate: 55.9, roi: 6.8, last6: "3-3", status: "neutral", picksPostedToday: 6, picks: [] },
+  { id: "x8", handle: "PropPlayPaul", sport: "NBA", record: "18-15", winRate: 54.5, roi: 5.9, last6: "3-3", status: "neutral", picksPostedToday: 0, picks: [] },
+  { id: "x9", handle: "SpreadShark", sport: "NFL", record: "17-15", winRate: 53.1, roi: 4.3, last6: "3-3", status: "neutral", picksPostedToday: 6, picks: [] },
+  { id: "x10", handle: "MoneylineMo", sport: "NBA", record: "16-15", winRate: 51.6, roi: 3.5, last6: "3-3", status: "neutral", picksPostedToday: 0, picks: [] },
+  { id: "x11", handle: "CourtsideKev", sport: "NBA", record: "15-15", winRate: 50.0, roi: 2.4, last6: "2-4", status: "neutral", picksPostedToday: 7, picks: [] },
+  { id: "x12", handle: "FaceOffFrank", sport: "NHL", record: "15-16", winRate: 48.4, roi: 1.8, last6: "3-3", status: "neutral", picksPostedToday: 0, picks: [] },
+  { id: "x13", handle: "DugoutDave", sport: "MLB", record: "14-16", winRate: 46.7, roi: 0.7, last6: "2-4", status: "neutral", picksPostedToday: 6, picks: [] },
+  { id: "x14", handle: "BlitzBilly", sport: "NFL", record: "14-17", winRate: 45.2, roi: -0.6, last6: "2-4", status: "neutral", picksPostedToday: 0, picks: [] },
+  { id: "x15", handle: "TipOffTom", sport: "NBA", record: "13-17", winRate: 43.3, roi: -2.1, last6: "2-4", status: "cold", picksPostedToday: 6, picks: [] },
+  { id: "x16", handle: "PowerPlayPat", sport: "NHL", record: "13-18", winRate: 41.9, roi: -3.4, last6: "1-5", status: "cold", picksPostedToday: 0, picks: [] },
+  { id: "x17", handle: "BullpenBen", sport: "MLB", record: "12-18", winRate: 40.0, roi: -4.2, last6: "2-4", status: "cold", picksPostedToday: 6, picks: [] },
+  { id: "x18", handle: "RedZoneRick", sport: "NFL", record: "12-19", winRate: 38.7, roi: -5.5, last6: "1-5", status: "cold", picksPostedToday: 0, picks: [] },
+  { id: "x19", handle: "BoxScoreBob", sport: "NBA", record: "11-19", winRate: 36.7, roi: -6.8, last6: "1-5", status: "cold", picksPostedToday: 7, picks: [] },
+  { id: "x20", handle: "SlapShotSam", sport: "NHL", record: "11-20", winRate: 35.5, roi: -8.0, last6: "1-5", status: "cold", picksPostedToday: 0, picks: [] },
+  { id: "x21", handle: "BrickBobby", sport: "NBA", record: "10-20", winRate: 33.3, roi: -9.2, last6: "0-6", status: "cold", picksPostedToday: 6, picks: [] },
+  { id: "x22", handle: "SwingMissSteve", sport: "MLB", record: "10-21", winRate: 32.3, roi: -10.4, last6: "1-5", status: "cold", picksPostedToday: 0, picks: [] },
+  { id: "x23", handle: "FumbleFred", sport: "NFL", record: "9-21", winRate: 30.0, roi: -11.5, last6: "0-6", status: "cold", picksPostedToday: 0, picks: [] },
+  { id: "x24", handle: "AirballAlex", sport: "NBA", record: "9-22", winRate: 29.0, roi: -13.2, last6: "0-6", status: "cold", picksPostedToday: 0, picks: [] },
+  { id: "x25", handle: "OffsidesOlly", sport: "NHL", record: "8-22", winRate: 26.7, roi: -14.8, last6: "0-6", status: "cold", picksPostedToday: 0, picks: [] },
 ];
 
 export const tickerEvents = [
@@ -144,7 +181,7 @@ export const transactions = [
   { id: "t5", date: "Apr 20", kind: "Withdrawal", detail: "To bank (Stripe)", amount: "-$9.00" },
 ];
 
-export const weeklyLeaders = cappers
+export const weeklyLeaders = [...cappers, ...extraLeaders]
   .slice()
   .sort((a, b) => b.roi - a.roi)
   .map((c, i) => ({ ...c, rank: i + 1 }));
