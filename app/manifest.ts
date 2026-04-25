@@ -24,7 +24,9 @@ export default function manifest(): MetadataRoute.Manifest {
         src: "/icon",
         sizes: "192x192",
         type: "image/png",
-        purpose: "any maskable",
+        // Default purpose is "any" — fine for the standard install icon.
+        // To add a maskable variant later, add a second entry with
+        // purpose: "maskable" pointing to a padded version of the icon.
       },
     ],
   };
