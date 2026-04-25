@@ -342,57 +342,85 @@ export default function StanleyCupPoolPage() {
           </div>
         </div>
 
-        {/* Player list */}
+        {/* Player list — horizontally scrollable on narrow screens */}
         <div className="rounded-xl border border-border bg-panel overflow-hidden">
-          <div className="divide-y divide-border max-h-[60vh] overflow-y-auto">
-            {visiblePlayers.map((p) => {
-              const isPicked = picked.has(p.id);
-              const limited = !isPicked && rosterFull;
-              return (
-                <button
-                  key={p.id}
-                  onClick={() => togglePlayer(p)}
-                  disabled={limited}
-                  className={`w-full flex items-center gap-3 p-3 text-left transition ${
-                    isPicked
-                      ? "bg-green/10"
-                      : limited
-                      ? "opacity-40"
-                      : "hover:bg-panel2"
-                  }`}
-                >
-                  <PosPill pos={p.position} />
-                  <div className="flex-1 min-w-0">
-                    <div className="font-semibold truncate">
-                      {p.name}{" "}
-                      <span className="text-muted text-xs">· {p.team}</span>
-                    </div>
-                    <div className="text-[11px] text-muted">
-                      {p.position === "G"
-                        ? `${p.wins} W · ${p.shutouts} SO`
-                        : `${p.goals} G · ${p.assists} A · ${p.pim} PIM`}
-                    </div>
-                  </div>
-                  <div className="font-display text-xl text-green">
-                    {p.fantasyPoints}
-                  </div>
-                  <div
-                    className={`ml-2 w-7 h-7 rounded-full border flex items-center justify-center text-sm ${
-                      isPicked
-                        ? "bg-green text-bg border-green"
-                        : "border-border text-muted"
-                    }`}
-                  >
-                    {isPicked ? "✓" : "+"}
-                  </div>
-                </button>
-              );
-            })}
-            {visiblePlayers.length === 0 && (
-              <div className="p-6 text-center text-muted text-sm">
-                No players match that filter.
+          <div className="max-h-[60vh] overflow-auto">
+            <div className="min-w-[560px]">
+              {/* Column headers */}
+              <div className="sticky top-0 z-10 bg-panel2 border-b border-border flex items-center gap-2 px-3 py-2 text-[10px] uppercase tracking-wider text-muted">
+                <div className="w-6 shrink-0" />
+                <div className="flex-1 min-w-[140px]">Player</div>
+                <StatHead w="w-10">GP</StatHead>
+                <StatHead w="w-10">G</StatHead>
+                <StatHead w="w-10">A</StatHead>
+                <StatHead w="w-10">P</StatHead>
+                <StatHead w="w-14">TOI</StatHead>
+                <StatHead w="w-12">S</StatHead>
+                <StatHead w="w-12">PIM</StatHead>
+                <StatHead w="w-12">FPTS</StatHead>
+                <div className="w-7 shrink-0" />
               </div>
-            )}
+
+              <div className="divide-y divide-border">
+                {visiblePlayers.map((p) => {
+                  const isPicked = picked.has(p.id);
+                  const limited = !isPicked && rosterFull;
+                  const points = p.goals + p.assists;
+                  return (
+                    <button
+                      key={p.id}
+                      onClick={() => togglePlayer(p)}
+                      disabled={limited}
+                      className={`w-full flex items-center gap-2 px-3 py-2.5 text-left transition ${
+                        isPicked
+                          ? "bg-green/10"
+                          : limited
+                          ? "opacity-40"
+                          : "hover:bg-panel2"
+                      }`}
+                    >
+                      <div className="w-6 shrink-0">
+                        <PosPill pos={p.position} />
+                      </div>
+                      <div className="flex-1 min-w-[140px]">
+                        <div className="text-sm font-semibold truncate">
+                          {p.name}
+                        </div>
+                        <div className="text-[10px] text-muted">
+                          {p.team}
+                          {p.position === "G" &&
+                            ` · ${p.wins} W · ${p.shutouts} SO`}
+                        </div>
+                      </div>
+                      <StatCell w="w-10">{p.gp}</StatCell>
+                      <StatCell w="w-10">{p.goals}</StatCell>
+                      <StatCell w="w-10">{p.assists}</StatCell>
+                      <StatCell w="w-10">{points}</StatCell>
+                      <StatCell w="w-14">{p.toi}</StatCell>
+                      <StatCell w="w-12">{p.shots}</StatCell>
+                      <StatCell w="w-12">{p.pim}</StatCell>
+                      <div className="w-12 font-display text-lg text-green text-center shrink-0">
+                        {p.fantasyPoints}
+                      </div>
+                      <div
+                        className={`w-7 h-7 rounded-full border flex items-center justify-center text-sm shrink-0 ${
+                          isPicked
+                            ? "bg-green text-bg border-green"
+                            : "border-border text-muted"
+                        }`}
+                      >
+                        {isPicked ? "✓" : "+"}
+                      </div>
+                    </button>
+                  );
+                })}
+                {visiblePlayers.length === 0 && (
+                  <div className="p-6 text-center text-muted text-sm">
+                    No players match that filter.
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -801,34 +829,92 @@ function RosterGroup({
         </div>
       </div>
       <div className="rounded-lg border border-border overflow-hidden">
-        <div className="divide-y divide-border">
-          {players.map((p, i) => (
-            <div
-              key={p.id}
-              className={`flex items-center gap-3 px-3 py-2 ${
-                i % 2 === 0 ? "bg-bg" : "bg-panel"
-              }`}
-            >
-              <span className="text-[10px] text-muted w-4 text-right">
-                {i + 1}
-              </span>
-              <RecapPosPill pos={pos} />
-              <div className="flex-1 min-w-0">
-                <div className="text-sm font-semibold truncate">{p.name}</div>
-                <div className="text-[10px] text-muted">
-                  {p.team} ·{" "}
-                  {p.position === "G"
-                    ? `${p.wins} W · ${p.shutouts} SO`
-                    : `${p.goals} G · ${p.assists} A · ${p.pim} PIM`}
-                </div>
-              </div>
-              <div className="font-display text-lg text-green">
-                {livePts}
-              </div>
+        <div className="overflow-x-auto">
+          <div className="min-w-[560px]">
+            {/* Column headers */}
+            <div className="bg-panel2 border-b border-border flex items-center gap-2 px-3 py-2 text-[10px] uppercase tracking-wider text-muted">
+              <div className="w-4 shrink-0" />
+              <div className="w-6 shrink-0" />
+              <div className="flex-1 min-w-[140px]">Player</div>
+              <StatHead w="w-10">GP</StatHead>
+              <StatHead w="w-10">G</StatHead>
+              <StatHead w="w-10">A</StatHead>
+              <StatHead w="w-10">P</StatHead>
+              <StatHead w="w-14">TOI</StatHead>
+              <StatHead w="w-12">S</StatHead>
+              <StatHead w="w-12">PIM</StatHead>
+              <StatHead w="w-12">FPTS</StatHead>
             </div>
-          ))}
+            <div className="divide-y divide-border">
+              {players.map((p, i) => {
+                const pts = p.goals + p.assists;
+                return (
+                  <div
+                    key={p.id}
+                    className={`flex items-center gap-2 px-3 py-2 ${
+                      i % 2 === 0 ? "bg-bg" : "bg-panel"
+                    }`}
+                  >
+                    <span className="text-[10px] text-muted w-4 text-right shrink-0">
+                      {i + 1}
+                    </span>
+                    <div className="w-6 shrink-0">
+                      <RecapPosPill pos={pos} />
+                    </div>
+                    <div className="flex-1 min-w-[140px]">
+                      <div className="text-sm font-semibold truncate">
+                        {p.name}
+                      </div>
+                      <div className="text-[10px] text-muted">
+                        {p.team}
+                        {p.position === "G" &&
+                          ` · ${p.wins} W · ${p.shutouts} SO`}
+                      </div>
+                    </div>
+                    <StatCell w="w-10">{p.gp}</StatCell>
+                    <StatCell w="w-10">{p.goals}</StatCell>
+                    <StatCell w="w-10">{p.assists}</StatCell>
+                    <StatCell w="w-10">{pts}</StatCell>
+                    <StatCell w="w-14">{p.toi}</StatCell>
+                    <StatCell w="w-12">{p.shots}</StatCell>
+                    <StatCell w="w-12">{p.pim}</StatCell>
+                    <div className="w-12 font-display text-lg text-green text-center shrink-0">
+                      {livePts}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+// Small helpers for the stat table layout (header + cell).
+function StatHead({
+  w,
+  children,
+}: {
+  w: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className={`${w} text-center shrink-0`}>{children}</div>
+  );
+}
+
+function StatCell({
+  w,
+  children,
+}: {
+  w: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className={`${w} text-center text-sm shrink-0 tabular-nums`}>
+      {children}
     </div>
   );
 }

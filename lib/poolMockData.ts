@@ -11,8 +11,12 @@ export type NhlPlayer = {
   team: string;          // NHL team abbr (TOR, EDM, ...)
   position: Position;    // F = Forward, D = Defenseman, G = Goalie
   // Season-to-date stats (mock). Real build pulls from NHL API.
+  gp: number;            // Games played
   goals: number;
   assists: number;
+  // points (G+A) is computed on the fly, not stored
+  toi: string;           // Avg time-on-ice per game, formatted "MM:SS"
+  shots: number;         // Shots on goal (season total)
   pim: number;           // Penalty minutes
   // Goalie-specific (0 for skaters)
   wins: number;
@@ -150,29 +154,35 @@ export const nhlPlayers: NhlPlayer[] = [
 ];
 
 function mkF(name: string, team: string, g: number, a: number, pim: number): NhlPlayer {
+  const d = deriveSkaterStats(name, team, g, a);
   return finalize({
     id: `p_${name}_${team}`,
     name,
     team,
     position: "F",
+    gp: d.gp, toi: d.toi, shots: d.shots,
     goals: g, assists: a, pim,
     wins: 0, shutouts: 0,
     fantasyPoints: 0,
   });
 }
 function mkD(name: string, team: string, g: number, a: number, pim: number): NhlPlayer {
+  const d = deriveSkaterStats(name, team, g, a);
   return finalize({
     id: `p_${name}_${team}`,
     name, team, position: "D",
+    gp: d.gp, toi: d.toi, shots: d.shots,
     goals: g, assists: a, pim,
     wins: 0, shutouts: 0,
     fantasyPoints: 0,
   });
 }
 function mkG(name: string, team: string, wins: number, so: number): NhlPlayer {
+  const d = deriveGoalieStats(name, team, wins);
   return finalize({
     id: `p_${name}_${team}`,
     name, team, position: "G",
+    gp: d.gp, toi: d.toi, shots: d.shotsAgainst,
     goals: 0, assists: 0, pim: 0,
     wins, shutouts: so,
     fantasyPoints: 0,
@@ -180,6 +190,62 @@ function mkG(name: string, team: string, wins: number, so: number): NhlPlayer {
 }
 function finalize(p: NhlPlayer): NhlPlayer {
   return { ...p, fantasyPoints: scorePlayer(p, DEFAULT_SCORING) };
+}
+
+// -----------------------------------------------------------------------------
+// Deterministic stat derivation — mock-data helper used until we wire the
+// real NHL API. Same input → same output, so a page refresh won't jitter.
+// -----------------------------------------------------------------------------
+function nameHash(s: string): number {
+  let h = 5381;
+  for (let i = 0; i < s.length; i++) h = ((h * 33) ^ s.charCodeAt(i)) >>> 0;
+  return h;
+}
+
+export function deriveSkaterStats(
+  name: string,
+  team: string,
+  g: number,
+  a: number
+): { gp: number; toi: string; shots: number } {
+  const h = nameHash(name + team);
+  const prod = g + a;
+
+  // Games played — stars play full seasons; depth varies.
+  let gp: number;
+  if (prod >= 80) gp = 78 + (h % 5);       // 78–82
+  else if (prod >= 50) gp = 72 + (h % 10); // 72–81
+  else if (prod >= 25) gp = 60 + (h % 20); // 60–79
+  else if (prod >= 10) gp = 40 + (h % 35); // 40–74
+  else gp = 15 + (h % 45);                  // 15–59
+  gp = Math.min(gp, 82);
+
+  // Shots — roughly goals × 7 with a baseline and team-hashed variance.
+  const shots = Math.max(0, g * 7 + 25 + (h % 60));
+
+  // Time on ice per game — top-liners 20+ mins, depth 10–14.
+  const toiMin = prod >= 60 ? 20 + ((h >> 3) % 4) : prod >= 30 ? 17 + ((h >> 3) % 5) : 11 + ((h >> 3) % 5);
+  const toiSec = (h >> 5) % 60;
+  const toi = `${toiMin}:${String(toiSec).padStart(2, "0")}`;
+
+  return { gp, toi, shots };
+}
+
+export function deriveGoalieStats(
+  name: string,
+  team: string,
+  wins: number
+): { gp: number; toi: string; shotsAgainst: number } {
+  const h = nameHash(name + team);
+  // GP = wins + some losses. Starters play 45–65 games.
+  const gp = Math.min(70, wins + 4 + Math.floor(wins * 0.4) + (h % 8));
+  // Goalies who play usually play the whole game — 58:00–62:00 avg.
+  const toiMin = 58 + ((h >> 2) % 4);
+  const toiSec = (h >> 7) % 60;
+  const toi = `${toiMin}:${String(toiSec).padStart(2, "0")}`;
+  // ~28 shots against per game for a starter, with variance.
+  const shotsAgainst = gp * 28 + (h % 90);
+  return { gp, toi, shotsAgainst };
 }
 
 export function scorePlayer(p: NhlPlayer, rules: ScoringRules): number {

@@ -8,7 +8,12 @@
 // =============================================================================
 
 import type { NhlPlayer, Position, ScoringRules } from "./poolMockData";
-import { scorePlayer, DEFAULT_SCORING } from "./poolMockData";
+import {
+  scorePlayer,
+  DEFAULT_SCORING,
+  deriveSkaterStats,
+  deriveGoalieStats,
+} from "./poolMockData";
 import { PLAYOFF_TEAM_IDS } from "./playoffBracket";
 
 // Compact tuple for roster authoring.
@@ -419,17 +424,27 @@ function buildPlayer(team: string, rp: RP): NhlPlayer {
     name,
     team,
     position: pos as Position,
+    gp: 0, toi: "0:00", shots: 0,
     goals: 0, assists: 0, pim: 0, wins: 0, shutouts: 0,
     fantasyPoints: 0,
   };
   if (pos === "G") {
-    base.wins = (rp as [string, "G", number, number])[2];
-    base.shutouts = (rp as [string, "G", number, number])[3];
+    const [, , wins, so] = rp as [string, "G", number, number];
+    base.wins = wins;
+    base.shutouts = so;
+    const d = deriveGoalieStats(name, team, wins);
+    base.gp = d.gp;
+    base.toi = d.toi;
+    base.shots = d.shotsAgainst;
   } else {
     const [, , g, a, pim] = rp as [string, "F" | "D", number, number, number];
     base.goals = g;
     base.assists = a;
     base.pim = pim;
+    const d = deriveSkaterStats(name, team, g, a);
+    base.gp = d.gp;
+    base.toi = d.toi;
+    base.shots = d.shots;
   }
   base.fantasyPoints = scorePlayer(base, DEFAULT_SCORING);
   return base;
