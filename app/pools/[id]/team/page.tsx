@@ -103,54 +103,56 @@ export default function BuildTeamPage({
     setSaved(true);
   }
 
+  // Reusable bracket CTA — shown above the team builder AND below the save bar.
+  const bracketCard = hasBracket ? (
+    <Link
+      href="/pools/stanley-cup"
+      className="block rounded border border-gold/40 bg-gradient-to-r from-gold/10 to-transparent px-2 py-1.5 hover:from-gold/15 transition"
+    >
+      <div className="flex items-center gap-1.5">
+        <div className="w-6 h-6 rounded-full bg-gold/15 border border-gold/40 flex items-center justify-center text-xs">
+          🏆
+        </div>
+        <div className="flex-1 min-w-0 leading-tight">
+          <div className="text-[9px] uppercase tracking-wider text-gold">
+            Bracket Module
+          </div>
+          <div className="text-[11px]">
+            This pool also has a playoff bracket — predict it for bonus points
+          </div>
+        </div>
+        <span className="text-gold text-xs">→</span>
+      </div>
+    </Link>
+  ) : null;
+
   return (
-    <div className="space-y-2.5 text-[13px]">
+    <div className="space-y-2 text-[12px]">
       <div>
-        <Link href={`/pools/${id}`} className="text-[11px] text-muted hover:text-text">
+        <Link href={`/pools/${id}`} className="text-[10px] text-muted hover:text-text">
           ← Back to pool
         </Link>
-        <h1 className="font-display text-xl mt-1 leading-none">BUILD YOUR TEAM</h1>
-        <p className="text-[11px] text-muted mt-0.5">
+        <h1 className="font-display text-lg mt-0.5 leading-none">BUILD YOUR TEAM</h1>
+        <p className="text-[10px] text-muted mt-0.5">
           Name your team, then fill every roster slot.
         </p>
       </div>
 
-      {/* Bracket-module CTA — only when the pool owner enabled it */}
-      {hasBracket && (
-        <Link
-          href="/pools/stanley-cup"
-          className="block rounded-lg border border-gold/40 bg-gradient-to-r from-gold/10 to-transparent px-3 py-2 hover:from-gold/15 transition"
-        >
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-gold/15 border border-gold/40 flex items-center justify-center text-base">
-              🏆
-            </div>
-            <div className="flex-1 min-w-0 leading-tight">
-              <div className="text-[11px] uppercase tracking-wider text-gold">
-                Bracket Module
-              </div>
-              <div className="text-xs">
-                This pool also has a playoff bracket — predict it for bonus points
-              </div>
-            </div>
-            <span className="text-gold text-sm">→</span>
-          </div>
-        </Link>
-      )}
+      {bracketCard}
 
       {/* Team name + slot summary side-by-side on desktop, stacked on mobile */}
-      <div className="rounded-lg border border-border bg-panel p-2.5 grid sm:grid-cols-[1fr_auto] gap-2 items-end">
+      <div className="rounded border border-border bg-panel p-2 grid sm:grid-cols-[1fr_auto] gap-1.5 items-end">
         <div>
-          <div className="text-[10px] text-muted mb-0.5 uppercase tracking-wider">Team name</div>
+          <div className="text-[9px] text-muted mb-0.5 uppercase tracking-wider">Team name</div>
           <input
             value={teamName}
             onChange={(e) => setTeamName(e.target.value)}
             placeholder="e.g. Puck Dynasty"
-            className="w-full bg-bg border border-border rounded px-2 py-1 text-xs"
+            className="w-full bg-bg border border-border rounded px-2 py-0.5 text-[11px]"
             maxLength={40}
           />
         </div>
-        <div className="grid grid-cols-3 gap-1.5">
+        <div className="grid grid-cols-3 gap-1">
           <SlotBox label="F" have={pickedBy.F.length} need={slotCounts.F} />
           <SlotBox label="D" have={pickedBy.D.length} need={slotCounts.D} />
           <SlotBox label="G" have={pickedBy.G.length} need={slotCounts.G} />
@@ -159,16 +161,16 @@ export default function BuildTeamPage({
 
       {/* Your roster so far — shown only when you've started picking */}
       {totalPicked > 0 && (
-        <div className="rounded-lg border border-green/30 bg-green/5 p-2">
-          <div className="text-[10px] uppercase tracking-wider text-green">
+        <div className="rounded border border-green/30 bg-green/5 p-1.5">
+          <div className="text-[9px] uppercase tracking-wider text-green">
             Your Roster ({totalPicked}/{totalNeeded})
           </div>
-          <div className="flex flex-wrap gap-1 mt-1">
+          <div className="flex flex-wrap gap-1 mt-0.5">
             {[...pickedBy.F, ...pickedBy.D, ...pickedBy.G].map((p) => (
               <button
                 key={p.id}
                 onClick={() => togglePick(p)}
-                className="inline-flex items-center gap-1 bg-bg border border-border rounded-full px-2 py-0.5 text-[11px] hover:border-green/40"
+                className="inline-flex items-center gap-0.5 bg-bg border border-border rounded-full px-1.5 py-0 text-[10px] hover:border-green/40"
               >
                 <PosPill pos={p.position} />
                 <span>{p.name}</span>
@@ -181,7 +183,7 @@ export default function BuildTeamPage({
       )}
 
       {/* Scoring legend — explains the green fantasy point number */}
-      <div className="rounded-lg border border-border bg-panel px-2.5 py-1.5 text-[11px] flex items-center gap-2 flex-wrap">
+      <div className="rounded border border-border bg-panel px-2 py-1 text-[10px] flex items-center gap-1.5 flex-wrap">
         <span className="text-[9px] uppercase tracking-wider text-muted">
           Scoring
         </span>
@@ -211,12 +213,12 @@ export default function BuildTeamPage({
       </div>
 
       {/* Filter + search */}
-      <div className="flex items-center gap-1.5 flex-wrap">
+      <div className="flex items-center gap-1 flex-wrap">
         {(["all", "F", "D", "G"] as const).map((f) => (
           <button
             key={f}
             onClick={() => setFilter(f)}
-            className={`px-2.5 py-1 rounded-full border text-[11px] transition ${
+            className={`px-2 py-0.5 rounded-full border text-[10px] transition ${
               filter === f
                 ? "bg-green/10 text-green border-green/40"
                 : "bg-panel border-border text-muted hover:text-text"
@@ -235,12 +237,12 @@ export default function BuildTeamPage({
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search name or team…"
-          className="flex-1 min-w-[140px] bg-panel border border-border rounded px-2 py-1 text-[11px]"
+          className="flex-1 min-w-[120px] bg-panel border border-border rounded px-2 py-0.5 text-[10px]"
         />
       </div>
 
       {/* Player list — denser rows */}
-      <div className="rounded-lg border border-border bg-panel overflow-hidden">
+      <div className="rounded border border-border bg-panel overflow-hidden">
         <div className="divide-y divide-border">
           {visible.map((p) => {
             const isPicked = picks.has(p.id);
@@ -251,7 +253,7 @@ export default function BuildTeamPage({
                 key={p.id}
                 onClick={() => togglePick(p)}
                 disabled={posFull}
-                className={`w-full flex items-center gap-2 px-2.5 py-1.5 text-left transition ${
+                className={`w-full flex items-center gap-1.5 px-2 py-1 text-left transition ${
                   isPicked
                     ? "bg-green/10"
                     : posFull
@@ -261,21 +263,21 @@ export default function BuildTeamPage({
               >
                 <PosPill pos={p.position} />
                 <div className="flex-1 min-w-0">
-                  <div className="text-[12px] font-semibold truncate leading-tight">
+                  <div className="text-[11px] font-semibold truncate leading-tight">
                     {p.name}{" "}
-                    <span className="text-muted text-[10px]">· {p.team}</span>
+                    <span className="text-muted text-[9px]">· {p.team}</span>
                   </div>
-                  <div className="text-[10px] text-muted leading-tight">
+                  <div className="text-[9px] text-muted leading-tight">
                     {p.position === "G"
                       ? `${p.wins} W · ${p.shutouts} SO`
                       : `${p.goals} G · ${p.assists} A · ${p.pim} PIM`}
                   </div>
                 </div>
-                <div className="font-display text-base text-green leading-none">
+                <div className="font-display text-sm text-green leading-none">
                   {p.fantasyPoints}
                 </div>
                 <div
-                  className={`ml-1 w-5 h-5 rounded-full border flex items-center justify-center text-[10px] ${
+                  className={`ml-0.5 w-4 h-4 rounded-full border flex items-center justify-center text-[9px] ${
                     isPicked
                       ? "bg-green text-bg border-green"
                       : "border-border text-muted"
@@ -287,7 +289,7 @@ export default function BuildTeamPage({
             );
           })}
           {visible.length === 0 && (
-            <div className="p-4 text-center text-muted text-[11px]">
+            <div className="p-3 text-center text-muted text-[10px]">
               No players match that filter.
             </div>
           )}
@@ -296,8 +298,8 @@ export default function BuildTeamPage({
 
       {/* Save bar */}
       <div className="sticky bottom-2 z-10">
-        <div className="rounded-lg border border-border bg-panel px-2.5 py-1.5 flex items-center gap-2 shadow-lg">
-          <div className="text-[11px] text-muted flex-1 leading-tight">
+        <div className="rounded border border-border bg-panel px-2 py-1 flex items-center gap-1.5 shadow-lg">
+          <div className="text-[10px] text-muted flex-1 leading-tight">
             {rosterFull
               ? "Roster complete — save to lock it in."
               : `${totalPicked}/${totalNeeded} picks · fill every slot to save.`}
@@ -305,15 +307,18 @@ export default function BuildTeamPage({
           <button
             disabled={!rosterFull || !teamName.trim() || saved}
             onClick={onSave}
-            className="bg-green text-bg font-semibold px-3 py-1 rounded-full text-[11px] shadow-glow disabled:opacity-40"
+            className="bg-green text-bg font-semibold px-2.5 py-0.5 rounded-full text-[10px] shadow-glow disabled:opacity-40"
           >
             {saved ? "Saved ✓" : "Save team"}
           </button>
         </div>
       </div>
 
+      {/* Duplicate bracket CTA below the save bar so it's visible after picks */}
+      {bracketCard}
+
       {saved && (
-        <div className="rounded-lg border border-green/40 bg-green/10 p-2 text-[11px]">
+        <div className="rounded border border-green/40 bg-green/10 p-1.5 text-[10px]">
           <span className="font-semibold text-green">{teamName}</span> saved.
           Head back to{" "}
           <Link href={`/pools/${id}`} className="underline">
@@ -338,14 +343,14 @@ function SlotBox({
   const full = have >= need && need > 0;
   return (
     <div
-      className={`rounded border px-2 py-0.5 flex items-center gap-1 ${
+      className={`rounded border px-1.5 py-0.5 flex items-center gap-0.5 ${
         full ? "border-green/40 bg-green/5" : "border-border bg-bg"
       }`}
     >
-      <span className="text-[10px] uppercase tracking-wider text-muted">
+      <span className="text-[9px] uppercase tracking-wider text-muted">
         {label}
       </span>
-      <span className={`font-display text-sm leading-none ${full ? "text-green" : ""}`}>
+      <span className={`font-display text-[11px] leading-none ${full ? "text-green" : ""}`}>
         {have}/{need}
       </span>
     </div>
@@ -360,7 +365,7 @@ function PosPill({ pos }: { pos: Position }) {
   };
   return (
     <span
-      className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold ${styles[pos]}`}
+      className={`w-5 h-5 shrink-0 rounded-full flex items-center justify-center text-[9px] font-bold ${styles[pos]}`}
     >
       {pos}
     </span>
