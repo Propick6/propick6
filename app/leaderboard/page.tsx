@@ -10,19 +10,38 @@ const tabs = [
   { id: "all", label: "All-Time", data: allTimeLeaders },
 ];
 
+const sportFilters = [
+  { id: "ALL", label: "All" },
+  { id: "NBA", label: "NBA" },
+  { id: "NFL", label: "NFL" },
+  { id: "NHL", label: "NHL" },
+  { id: "MLB", label: "MLB" },
+];
+
 const PAGE_SIZE = 10;
 
 export default function LeaderboardPage() {
   const [active, setActive] = useState("week");
+  const [sport, setSport] = useState("ALL");
   const [page, setPage] = useState(1);
   const activeTab = tabs.find((t) => t.id === active)!;
 
-  const totalPages = Math.max(1, Math.ceil(activeTab.data.length / PAGE_SIZE));
+  // Strict rule: a capper appears under a sport filter only if 100% of their
+  // picks are that sport (pureSport === sport). Mixed-sport cappers (pureSport === null)
+  // appear ONLY under "All".
+  const filtered =
+    sport === "ALL"
+      ? activeTab.data
+      : activeTab.data.filter((c) => c.pureSport === sport);
+
+  // Reassign visible ranks so the top of the filtered list is "1".
+  const ranked = filtered.map((c, i) => ({ ...c, displayRank: i + 1 }));
+
+  const totalPages = Math.max(1, Math.ceil(ranked.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
   const startIdx = (safePage - 1) * PAGE_SIZE;
-  const visible = activeTab.data.slice(startIdx, startIdx + PAGE_SIZE);
+  const visible = ranked.slice(startIdx, startIdx + PAGE_SIZE);
 
-  // Simple pager: always show 1, 2, 3 then Next / Last (if applicable).
   const pageNumbers: number[] = [];
   for (let i = 1; i <= Math.min(3, totalPages); i++) pageNumbers.push(i);
 
@@ -34,6 +53,13 @@ export default function LeaderboardPage() {
     setActive(id);
     setPage(1);
   }
+
+  function switchSport(id: string) {
+    setSport(id);
+    setPage(1);
+  }
+
+  const activeSportLabel = sportFilters.find((s) => s.id === sport)!.label;
 
   return (
     <div className="space-y-4">
@@ -49,7 +75,7 @@ export default function LeaderboardPage() {
         Your ad here — <a href="/advertise" className="text-green underline">Leaderboard Banner $299/week</a>
       </div>
 
-      {/* Tabs */}
+      {/* Time-window tabs */}
       <div className="flex gap-1 bg-panel p-1 rounded-full border border-border w-full max-w-sm">
         {tabs.map((t) => (
           <button
@@ -66,6 +92,30 @@ export default function LeaderboardPage() {
         ))}
       </div>
 
+      {/* Sport filter pills */}
+      <div className="flex gap-1 bg-panel p-1 rounded-full border border-border w-full max-w-md">
+        {sportFilters.map((s) => (
+          <button
+            key={s.id}
+            onClick={() => switchSport(s.id)}
+            className={`flex-1 px-3 py-1.5 rounded-full text-xs uppercase tracking-wider transition ${
+              sport === s.id
+                ? "bg-green text-bg font-semibold"
+                : "text-muted hover:text-text"
+            }`}
+          >
+            {s.label}
+          </button>
+        ))}
+      </div>
+
+      {sport !== "ALL" && (
+        <div className="text-xs text-muted">
+          Showing {ranked.length} pure {activeSportLabel} cappers — mixed-sport cappers
+          only appear under <button onClick={() => switchSport("ALL")} className="underline hover:text-text">All</button>.
+        </div>
+      )}
+
       {/* Table */}
       <div className="rounded-xl border border-border bg-panel overflow-hidden">
         <div className="grid grid-cols-[40px_1fr_70px_60px_60px_50px] gap-2 text-[11px] uppercase tracking-wider text-muted px-4 py-3 border-b border-border bg-panel2">
@@ -76,48 +126,58 @@ export default function LeaderboardPage() {
           <div>Last 6</div>
           <div className="text-center">Picks</div>
         </div>
-        {visible.map((c) => {
-          const hasPicksToday = c.picksPostedToday >= 6;
-          return (
-            <div
-              key={c.id}
-              className="grid grid-cols-[40px_1fr_70px_60px_60px_50px] gap-2 items-center px-4 py-3 border-b border-border last:border-0 text-sm"
-            >
-              <div className="font-display text-lg">{c.rank}</div>
-              <div className="flex items-center gap-2 min-w-0">
-                {c.status === "hot" && (
-                  <span className="text-[12px]" aria-label="hot">🔥</span>
-                )}
-                {c.status === "cold" && (
-                  <span className="text-[12px]" aria-label="cold">❄️</span>
-                )}
-                <Link
-                  href={`/u/${c.handle}`}
-                  className="truncate font-semibold hover:text-green"
-                >
-                  @{c.handle}
-                </Link>
-              </div>
-              <div>{c.record}</div>
-              <div>{c.winRate.toFixed(1)}%</div>
-              <div>{c.last6}</div>
-              <div className="text-center">
-                {hasPicksToday ? (
+        {visible.length === 0 ? (
+          <div className="px-4 py-8 text-center text-sm text-muted">
+            No pure {activeSportLabel} cappers yet — try another sport or{" "}
+            <button onClick={() => switchSport("ALL")} className="text-green underline">
+              view all
+            </button>
+            .
+          </div>
+        ) : (
+          visible.map((c) => {
+            const hasPicksToday = c.picksPostedToday >= 6;
+            return (
+              <div
+                key={c.id}
+                className="grid grid-cols-[40px_1fr_70px_60px_60px_50px] gap-2 items-center px-4 py-3 border-b border-border last:border-0 text-sm"
+              >
+                <div className="font-display text-lg">{c.displayRank}</div>
+                <div className="flex items-center gap-2 min-w-0">
+                  {c.status === "hot" && (
+                    <span className="text-[12px]" aria-label="hot">🔥</span>
+                  )}
+                  {c.status === "cold" && (
+                    <span className="text-[12px]" aria-label="cold">❄️</span>
+                  )}
                   <Link
                     href={`/u/${c.handle}`}
-                    title="Picks in for today — view profile"
-                    aria-label={`${c.handle} has picks in for today`}
-                    className="inline-block text-base hover:scale-110 transition-transform"
+                    className="truncate font-semibold hover:text-green"
                   >
-                    👁
+                    @{c.handle}
                   </Link>
-                ) : (
-                  <span className="text-muted opacity-30" aria-label="no picks yet">—</span>
-                )}
+                </div>
+                <div>{c.record}</div>
+                <div>{c.winRate.toFixed(1)}%</div>
+                <div>{c.last6}</div>
+                <div className="text-center">
+                  {hasPicksToday ? (
+                    <Link
+                      href={`/u/${c.handle}`}
+                      title="Picks in for today — view profile"
+                      aria-label={`${c.handle} has picks in for today`}
+                      className="inline-block text-base hover:scale-110 transition-transform"
+                    >
+                      👁
+                    </Link>
+                  ) : (
+                    <span className="text-muted opacity-30" aria-label="no picks yet">—</span>
+                  )}
+                </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })
+        )}
       </div>
 
       {/* Pagination */}
