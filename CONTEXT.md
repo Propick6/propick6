@@ -1,5 +1,5 @@
 # Pro Pick 6 — Project Context File
-*Last updated: April 24, 2026 (Feed + profiles live, Report flow shipped)*
+*Last updated: April 25, 2026 (Token rename, leaderboard wireframe + sport filter, PWA install support, Consensus Picks spec captured)*
 
 ---
 
@@ -11,7 +11,7 @@ A sports picks marketplace called **Pro Pick 6** where cappers (sellers) post da
 ## App Name & Branding
 - **Name:** Pro Pick 6
 - **Logo style:** "PRO" small above "PICK 6" — the 6 is highlighted in green
-- **Color scheme:** Dark background (#07090D), green accent (#00E676), gold for unlock tokens (#FFD700), blue for earn tokens (#00C2FF)
+- **Color scheme:** Dark background (#07090D), green accent (#00E676), gold for unlock tokens (#FFD700), blue for redeem tokens (#00C2FF). A third token color is planned: green 🟢 for the upcoming Free Tokens (matches brand accent).
 - **Fonts:** Bebas Neue (display/headings) + DM Sans (body)
 - **Promo code for ad banner:** PROPICK6
 
@@ -48,6 +48,14 @@ A sports picks marketplace called **Pro Pick 6** where cappers (sellers) post da
 - Steps: 10 → 6, 15 → 9, 20 → 12, etc.
 - Only moves in steps of 5 — no partial conversions
 
+### Free Tokens (green) — designed 2026-04-25, NOT YET BUILT
+- Value: **$0** (non-monetized, can't be purchased, can't be redeemed for cash)
+- How earned: Visit `/consensus`, watch a sponsored ad, vote on at least 1 game on today's slate. Daily cap: 1 free token per user per day.
+- Usage: Same as Unlock Tokens — spend 1 to unlock a capper's full day card
+- **Expires at midnight daily** (unused = lost). This is the only token type that expires.
+- Purpose: Drives daily engagement, ad views, and consensus-poll participation. Lets new/free users sample the marketplace without paying.
+- Full spec lives in the auto-memory `project_consensus_picks.md`; build is queued under TODO.md → Up Next.
+
 ### Platform Rake
 - **$2 per unlock** (buyer pays $5, seller gets $3 token, platform keeps $2)
 - Stripe processing fee (~2.9%) comes out of the platform's $2
@@ -82,7 +90,7 @@ Platform nets:    ~$1.85 per unlock
 
 ---
 
-## Build Status (As of 2026-04-23 evening)
+## Build Status (As of 2026-04-25)
 
 ### Phase 1 — Visual prototype deployed ✅
 - Next.js 14 (App Router) + TypeScript + Tailwind CSS
@@ -126,6 +134,13 @@ Platform nets:    ~$1.85 per unlock
 - Report-user flow: `reports` table with RLS + Report modal on profile. Reports write to DB. **Admin review page + email notifications still TODO.**
 - Supabase MCP now authorized for Propick6 — SQL/migrations/seeds run directly from Claude.
 
+### Phase 2.6 — UX polish + Stanley Cup pool + PWA install ✅ (2026-04-24 → 2026-04-25)
+- **Stanley Cup Playoff Pool prototype** at `/pools/stanley-cup` — clickable bracket (auto-advance + games-per-series picker 4/5/6/7) + 20-player roster from all 16 actual 2026 playoff teams (~352 mock players). Bracket-bonus + player-points scoring legend. Local state only — DB persistence + per-pool brackets are next.
+- **Leaderboard wireframe redesign** — columns now Place / User (with hot/cold emoji) / Record / Win% / Last 6 / Picks (eyeball icon link to `/u/[handle]` when capper has 6+ picks today). ROI dropped from view (still on type for future use). Pagination at 10/page (Page 1/2/3/Next/Last). Mock data padded with 25 extra leaders so 3 pages render convincingly.
+- **Leaderboard sport filter** — pill row below Weekly/Monthly/All-Time: All / NBA / NFL / NHL / MLB. Strict purity rule (Capper.pureSport === filter or filter === ALL). 5 of the 25 padded mock leaders marked mixed-sport so the filter visibly trims the list. Switching filter re-ranks visible places + resets pagination.
+- **Token rename pass** — UI labels updated everywhere: 🟡 "Unlock Balance" → "Unlock Tokens", 🔵 "Earn Balance" → "Redeem Tokens", "Earn Token" → "Redeem Token" in body copy across wallet/stats/pick/transactions. Mock data field `currentUser.earnTokens` → `redeemTokens`. Nav chips got hover titles. **DB column `earn_tokens` intentionally unchanged** — UI labels it "Redeem" but the column name is unchanged for safety; migration is queued as its own one-shot round.
+- **PWA install support** — `app/icon.tsx` (192) + `app/apple-icon.tsx` (180) generate PNGs at build via `ImageResponse` (no static image files committed). `app/manifest.ts` declares the app installable with brand colors (#07090D bg / #00E676 theme). `layout.tsx` wired with `appleWebApp` metadata + `viewport.themeColor`. Tapping "Add to Home Screen" on iPhone or Galaxy now installs full-screen with a custom P6 icon.
+
 ### Phase 2.5 continued — still pending
 - `/pools/[id]` detail page — read real pool + live leaderboard via `pool_leaderboard` view
 - `/pools/[id]/rules` — read real pool scoring config
@@ -135,6 +150,9 @@ Platform nets:    ~$1.85 per unlock
 - +Pick page — wire the form to INSERT into `picks` so real users can actually post picks
 - Admin reports review page — gated by `is_admin` on profiles
 - Leaderboard + My Stats + Wallet pages — still on mock data
+- **Consensus Picks page (`/consensus`) + 🟢 Free Token** — designed 2026-04-25, full spec in auto-memory. Build TBD.
+- **DB column rename** `earn_tokens` → `redeem_tokens` — paired migration + Nav.tsx + schema.sql + trigger update. Low risk if done in isolation.
+- **Per-pool bracket prediction** at `/pools/[id]/bracket` — currently `/pools/stanley-cup` is a global placeholder; needs to scope brackets per pool
 
 ### Phase 3 — Wire Stripe (test mode)
 - Install `stripe` + `@stripe/stripe-js`
@@ -172,10 +190,11 @@ Platform nets:    ~$1.85 per unlock
 - Picks expire at midnight (no back-catalogue)
 - Sellers hidden (not penalized) if under 6 picks
 - Buyers see picks added in real time throughout the day after unlocking
-- Tokens never expire
-- Conversion only in increments of 5 earn → 3 unlock
+- Unlock + Redeem tokens never expire; Free Tokens DO expire daily (only token type that does)
+- Conversion only in increments of 5 redeem → 3 unlock
 - Monthly cash payouts replaced entirely by token system — sellers cash out on their own schedule
-- Two separate token types to keep dollar values clean and separate
+- Three token types planned: 🟡 Unlock (paid), 🔵 Redeem (sellers earn, cash out), 🟢 Free (engagement-earned, daily expiry)
+- Leaderboard sport filter uses **strict purity rule**: a capper appears under a sport bucket (NBA/NFL/NHL/MLB) only if 100% of their picks are that sport. Mixed-sport cappers appear under "All" only.
 - Propick6 accounts fully separate from any other owner-held accounts
 
 ---
@@ -199,47 +218,60 @@ Mikes Pro Picks/
     ├── .env.local.example      ← template; real .env.local is gitignored
     ├── app/
     │   ├── globals.css
-    │   ├── layout.tsx
-    │   ├── page.tsx                (Feed)
-    │   ├── leaderboard/page.tsx
+    │   ├── layout.tsx              ← metadata + viewport (PWA theme color, appleWebApp)
+    │   ├── icon.tsx                ← 192x192 PWA + favicon icon, generated at build via ImageResponse
+    │   ├── apple-icon.tsx          ← 180x180 iOS home-screen icon, also via ImageResponse
+    │   ├── manifest.ts             ← PWA manifest (Android install)
+    │   ├── page.tsx                (Feed — wired to Supabase)
+    │   ├── leaderboard/page.tsx    ← wireframe redesign + sport filter + pagination (mock data)
     │   ├── pick/page.tsx
     │   ├── wallet/page.tsx
     │   ├── stats/page.tsx
     │   ├── advertise/page.tsx
-    │   ├── signin/page.tsx         ← magic-link sign-in
+    │   ├── account/page.tsx        ← handle editor, display name, sign-out
+    │   ├── u/[handle]/page.tsx     ← public profile (Supabase-wired)
+    │   ├── signin/page.tsx         ← magic-link + email/password tabs
+    │   ├── forgot/page.tsx         ← forgot-password
+    │   ├── reset-password/page.tsx ← reset-password
     │   ├── auth/
     │   │   ├── callback/route.ts   ← exchanges magic-link code for session
     │   │   └── signout/route.ts
     │   └── pools/
     │       ├── page.tsx            (Pools list — reads from Supabase)
     │       ├── create/page.tsx     (Create pool — writes to Supabase)
+    │       ├── stanley-cup/page.tsx (Stanley Cup bracket prototype — local state)
     │       └── [id]/
     │           ├── page.tsx        (Pool detail — mock data for now)
     │           ├── team/page.tsx   (Team builder — mock data for now)
     │           ├── rules/page.tsx  (Rules + scoring breakdown — mock data for now)
     │           └── settings/page.tsx (Edit pool — mock data for now)
-    ├── components/Nav.tsx      ← reads auth state + profile for token pills
+    ├── components/Nav.tsx      ← reads auth state + profile for token pills (with hover-title labels)
     ├── lib/
-    │   ├── mockData.ts         (picks marketplace mock data)
+    │   ├── mockData.ts         (picks marketplace mock data — incl. extraLeaders for leaderboard pagination demo)
     │   ├── poolMockData.ts     (NHL players + pool types + helpers)
     │   └── supabase/
     │       ├── client.ts       (browser client)
     │       ├── server.ts       (server components + route handlers)
     │       └── middleware.ts   (session-refresh helper)
     └── supabase/
-        ├── schema.sql              ← base: profiles/picks/unlocks/transactions/advertisers + trigger
-        ├── pools_schema.sql        ← pools module tables + RLS + leaderboard view
-        └── seed_nhl_players.sql    ← 52 NHL players
+        ├── schema.sql                              ← base: profiles/picks/unlocks/transactions/advertisers + trigger
+        ├── pools_schema.sql                        ← pools module tables + RLS + leaderboard view
+        ├── seed_nhl_players.sql                    ← 52 NHL players
+        ├── 2026-04-24_pools_has_bracket.sql        ← migration: pools.has_bracket flag for bracket-enabled pools
+        └── (other seed files: demo cappers, demo picks, etc.)
 ```
 
 ---
 
 ## Next Step When Resuming
-1. Pick one meaningful next item (in rough priority order from TODO.md):
+1. Pick one meaningful next item (priority order roughly tracks TODO.md → Up Next):
+   - **Consensus Picks page (`/consensus`) + 🟢 Free Token** — high-impact engagement loop. Full spec already locked in (auto-memory `project_consensus_picks.md`). Build path: new nav item → ad gate → game vote UI → poll reveal → earn 1 free token (daily cap, midnight expiry). DB additions: `free_tokens` int + `free_tokens_expires_at` timestamp on profiles, plus a `consensus_votes` table.
+   - **DB column rename** `earn_tokens` → `redeem_tokens` — finishes the 2026-04-25 UI rename. Touches schema.sql + Nav.tsx Profile type + auto-create trigger. One-shot, low risk if isolated.
    - **Wire Unlock to persist** — the core money loop. `unlocks` table insert + `profiles.unlock_tokens` / `earn_tokens` updates. After this the whole token economy is real.
    - **Finish wiring pool pages** (`/pools/[id]`, team builder, rules, settings) so pools are fully functional end-to-end.
+   - **Per-pool bracket** at `/pools/[id]/bracket` — `/pools/stanley-cup` is currently global; needs per-pool scoping.
    - **Admin reports page** — Nick needs a way to see reports inside the app, not just in Supabase Table Editor.
-   - **TOTP 2FA** — option 3 of the auth plan.
-   - **Google Cloud OAuth setup** — finish option 1 (deferred; console.cloud.google.com setup + `NEXT_PUBLIC_GOOGLE_ENABLED=true`).
-2. Running list of queued work: see `Mikes Pro Picks/TODO.md` in the workspace.
+   - **TOTP 2FA** + **Google Cloud OAuth setup** — auth round-out items.
+2. Running list of queued work: see `Mikes Pro Picks/TODO.md` in the workspace (workspace-level, not in repo).
 3. Supabase MCP is now wired to Propick6 — SQL/seeds/migrations can run directly from chat. Vercel is still generate-and-paste (env vars, redeploys).
+4. App is now installable as a PWA on iPhone (Safari → Share → Add to Home Screen) and Galaxy/Android (Chrome → three-dot → Install app). Custom P6 icon, full-screen launch.
