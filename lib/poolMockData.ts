@@ -76,6 +76,9 @@ export type Pool = {
   // Unique-player draft means a player can only be on one team in the pool.
   // False = independent picks (same player can be on many teams) — simpler.
   uniqueDraft: boolean;
+  // Optional bracket-prediction module: when true, members predict the
+  // 15-series NHL playoff bracket for bonus points on top of roster scoring.
+  hasBracket?: boolean;
   joinCode?: string;         // for private pools
   prizePool?: string;        // display string (e.g. "50 🟡", "Bragging rights")
 };
@@ -278,6 +281,7 @@ export const samplePools: Pool[] = [
     roster: { forwards: 6, defense: 3, goalies: 1 },
     scoring: DEFAULT_SCORING,
     uniqueDraft: false,
+    hasBracket: true,
     prizePool: "400 🟡 to 1st · 100 🟡 to 2nd · 50 🟡 to 3rd",
   },
   {

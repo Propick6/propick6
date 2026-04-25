@@ -43,6 +43,9 @@ export default function CreatePoolPage() {
   // Draft
   const [uniqueDraft, setUniqueDraft] = useState(false);
 
+  // Modules — optional add-ons layered on top of the base pool
+  const [hasBracket, setHasBracket] = useState(false);
+
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState("");
 
@@ -92,6 +95,7 @@ export default function CreatePoolPage() {
         scoring_goalie_win: winPts,
         scoring_goalie_shutout: soPts,
         unique_draft: uniqueDraft,
+        has_bracket: hasBracket,
         join_code: joinCode,
         prize_pool: prizePool || null,
       })
@@ -291,6 +295,76 @@ export default function CreatePoolPage() {
           </div>
         </Section>
 
+        {/* Modules — optional add-ons */}
+        <Section title="Modules">
+          <p className="text-[11px] text-muted -mt-1">
+            Layer extra prediction games on top of the base pool. Each module
+            adds its own bonus points to your standings.
+          </p>
+
+          {/* NHL Playoff Bracket toggle card */}
+          <button
+            type="button"
+            onClick={() => setHasBracket((v) => !v)}
+            className={`w-full text-left rounded-xl border p-4 transition ${
+              hasBracket
+                ? "border-gold/50 bg-gold/10"
+                : "border-border bg-bg hover:bg-panel2"
+            }`}
+            aria-pressed={hasBracket}
+          >
+            <div className="flex items-center gap-3">
+              <div
+                className={`w-12 h-12 rounded-full flex items-center justify-center text-2xl ${
+                  hasBracket
+                    ? "bg-gold/20 border border-gold/50"
+                    : "bg-panel2 border border-border"
+                }`}
+              >
+                🏆
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-display text-lg leading-none">
+                    NHL PLAYOFF BRACKET
+                  </span>
+                  {hasBracket && (
+                    <span className="text-[10px] bg-gold/20 text-gold px-1.5 py-0.5 rounded tracking-wider">
+                      ADDED
+                    </span>
+                  )}
+                </div>
+                <div className="text-xs text-muted mt-0.5">
+                  Members predict all 15 series (winner + games 4–7) for bonus
+                  points alongside their roster.
+                </div>
+              </div>
+              <div
+                className={`w-11 h-6 rounded-full relative transition ${
+                  hasBracket ? "bg-gold" : "bg-panel2 border border-border"
+                }`}
+                aria-hidden
+              >
+                <span
+                  className={`absolute top-0.5 w-5 h-5 rounded-full bg-bg transition ${
+                    hasBracket ? "left-5" : "left-0.5"
+                  }`}
+                />
+              </div>
+            </div>
+
+            {hasBracket && (
+              <div className="mt-3 pt-3 border-t border-gold/30 grid grid-cols-3 sm:grid-cols-5 gap-2 text-[11px]">
+                <BracketScoreChip label="R1 winner" pts="+5" />
+                <BracketScoreChip label="R2 winner" pts="+10" />
+                <BracketScoreChip label="Conf Final" pts="+15" />
+                <BracketScoreChip label="Cup winner" pts="+25" />
+                <BracketScoreChip label="Exact games" pts="+3" />
+              </div>
+            )}
+          </button>
+        </Section>
+
         {err && (
           <div className="rounded-md border border-hot/40 bg-hot/10 p-3 text-sm text-hot">
             {err}
@@ -333,6 +407,15 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
     <div>
       <div className="text-xs text-muted mb-1">{label}</div>
       {children}
+    </div>
+  );
+}
+
+function BracketScoreChip({ label, pts }: { label: string; pts: string }) {
+  return (
+    <div className="rounded-md border border-gold/30 bg-bg/40 p-2 text-center">
+      <div className="font-semibold text-gold">{pts}</div>
+      <div className="text-[10px] text-muted leading-tight">{label}</div>
     </div>
   );
 }

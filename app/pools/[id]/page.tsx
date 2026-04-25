@@ -128,6 +128,34 @@ export default function PoolDetailPage({
         </div>
       )}
 
+      {/* Bracket module (optional add-on) */}
+      {pool.hasBracket && (
+        <Link
+          href="/pools/stanley-cup"
+          className="block rounded-xl border border-gold/40 bg-gradient-to-r from-gold/10 to-transparent p-4 hover:from-gold/15 transition"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-full bg-gold/15 border border-gold/40 flex items-center justify-center text-2xl">
+              🏆
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="font-display text-lg">
+                  PREDICT THE BRACKET
+                </span>
+                <span className="text-[10px] bg-gold/20 text-gold px-1.5 py-0.5 rounded tracking-wider">
+                  MODULE
+                </span>
+              </div>
+              <div className="text-xs text-muted mt-0.5">
+                15 series · winner + games (4–7) · bonus points on top of roster
+              </div>
+            </div>
+            <span className="text-gold text-lg">→</span>
+          </div>
+        </Link>
+      )}
+
       {/* Join code (private) */}
       {pool.kind === "private" && pool.joinCode && (
         <div className="rounded-xl border border-border bg-panel p-4 flex items-center justify-between">

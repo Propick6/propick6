@@ -18,6 +18,7 @@ type PoolRow = {
   roster_forwards: number;
   roster_defense: number;
   roster_goalies: number;
+  has_bracket: boolean | null;
   prize_pool: string | null;
   owner: { handle: string | null } | null;
   entries: { count: number }[]; // comes back as an array with one count row
@@ -41,7 +42,7 @@ export default function PoolsIndexPage() {
           `
           id, name, kind, owner_id, entry_model, entry_tokens, duration,
           max_entries, roster_forwards, roster_defense, roster_goalies,
-          prize_pool,
+          has_bracket, prize_pool,
           owner:profiles!owner_id(handle),
           entries:pool_entries(count)
         `
@@ -186,6 +187,11 @@ function PoolCard({ pool }: { pool: PoolRow }) {
             ) : (
               <span className="text-[10px] bg-panel2 border border-border text-muted px-1.5 py-0.5 rounded tracking-wider">
                 PRIVATE
+              </span>
+            )}
+            {pool.has_bracket && (
+              <span className="text-[10px] bg-gold/15 text-gold border border-gold/30 px-1.5 py-0.5 rounded tracking-wider inline-flex items-center gap-1">
+                🏆 BRACKET
               </span>
             )}
           </div>
