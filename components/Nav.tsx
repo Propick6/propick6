@@ -11,6 +11,7 @@ const links = [
   { href: "/leaderboard", label: "Leaderboard" },
   { href: "/pools", label: "Pools" },
   { href: "/pick", label: "+ Pick" },
+  { href: "/messages", label: "Messages" },
   { href: "/stats", label: "My Stats" },
   { href: "/advertise", label: "Advertise" },
 ];
@@ -26,6 +27,8 @@ export default function Nav() {
   const [signedIn, setSignedIn] = useState<boolean | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [unread, setUnread] = useState(0);
+  const [userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
     const supabase = createClient();
@@ -36,9 +39,12 @@ export default function Nav() {
       if (!user) {
         setSignedIn(false);
         setProfile(null);
+        setUserId(null);
+        setUnread(0);
         return;
       }
       setSignedIn(true);
+      setUserId(user.id);
 
       const { data } = await supabase
         .from("profiles")
@@ -58,6 +64,67 @@ export default function Nav() {
     return () => sub.subscription.unsubscribe();
   }, []);
 
+  // Compute the unread message count (across all conversations) and keep it
+  // fresh: refetch on every route change AND on every message Realtime INSERT
+  // we receive (RLS scopes the broadcast to conversations we're in).
+  useEffect(() => {
+    if (!userId) {
+      setUnread(0);
+      return;
+    }
+    const supabase = createClient();
+
+    async function fetchUnread() {
+      const { data: members } = await supabase
+        .from("conversation_members")
+        .select("conversation_id, last_read_at")
+        .eq("user_id", userId);
+      if (!members || members.length === 0) {
+        setUnread(0);
+        return;
+      }
+      const convIds = members.map((m) => m.conversation_id as string);
+      const lastReadByConv = new Map<string, string>(
+        members.map((m) => [m.conversation_id as string, m.last_read_at as string])
+      );
+
+      const { data: msgs } = await supabase
+        .from("messages")
+        .select("conversation_id, created_at, sender_id")
+        .in("conversation_id", convIds)
+        .neq("sender_id", userId);
+
+      let count = 0;
+      for (const m of (msgs ?? []) as Array<{
+        conversation_id: string;
+        created_at: string;
+      }>) {
+        const lr = lastReadByConv.get(m.conversation_id);
+        if (lr && m.created_at > lr) count++;
+      }
+      setUnread(count);
+    }
+
+    fetchUnread();
+
+    const channel = supabase
+      .channel(`nav-unread-${userId}`)
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "messages" },
+        () => {
+          // RLS only delivers events for messages in conversations we're in,
+          // so any insert we see here is potentially relevant. Refetch.
+          fetchUnread();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [userId, path]);
+
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-bg/90 backdrop-blur">
       <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
@@ -73,17 +140,23 @@ export default function Nav() {
           {links.map((l) => {
             const active =
               l.href === "/" ? path === "/" : path.startsWith(l.href);
+            const showBadge = l.href === "/messages" && unread > 0;
             return (
               <Link
                 key={l.href}
                 href={l.href}
-                className={`px-3 py-1.5 rounded-full transition ${
+                className={`px-3 py-1.5 rounded-full transition inline-flex items-center gap-1.5 ${
                   active
                     ? "bg-green/10 text-green"
                     : "text-muted hover:text-text hover:bg-panel"
                 }`}
               >
                 {l.label}
+                {showBadge && (
+                  <span className="bg-green text-bg text-[10px] font-bold rounded-full min-w-4 h-4 px-1 flex items-center justify-center">
+                    {unread > 99 ? "99+" : unread}
+                  </span>
+                )}
               </Link>
             );
           })}
@@ -152,17 +225,23 @@ export default function Nav() {
           {links.map((l) => {
             const active =
               l.href === "/" ? path === "/" : path.startsWith(l.href);
+            const showBadge = l.href === "/messages" && unread > 0;
             return (
               <Link
                 key={l.href}
                 href={l.href}
-                className={`px-3 py-1.5 rounded-full whitespace-nowrap ${
+                className={`px-3 py-1.5 rounded-full whitespace-nowrap inline-flex items-center gap-1 ${
                   active
                     ? "bg-green/10 text-green"
                     : "text-muted hover:text-text"
                 }`}
               >
                 {l.label}
+                {showBadge && (
+                  <span className="bg-green text-bg text-[9px] font-bold rounded-full min-w-3.5 h-3.5 px-1 flex items-center justify-center">
+                    {unread > 99 ? "99+" : unread}
+                  </span>
+                )}
               </Link>
             );
           })}

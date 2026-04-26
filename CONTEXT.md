@@ -1,5 +1,5 @@
 # Pro Pick 6 — Project Context File
-*Last updated: April 25, 2026 (Token rename, leaderboard wireframe + sport filter, PWA install, Follow feature, +Pick wired to DB with ESPN game picker)*
+*Last updated: April 25, 2026 (Token rename, leaderboard, PWA, Follow, +Pick wired with ESPN, Capper search, Followers list modal, Real-time Messages module)*
 
 ---
 
@@ -133,6 +133,20 @@ Platform nets:    ~$1.85 per unlock
 - Leaderboard handles + pool owner/entry handles link to `/u/[handle]`.
 - Report-user flow: `reports` table with RLS + Report modal on profile. Reports write to DB. **Admin review page + email notifications still TODO.**
 - Supabase MCP now authorized for Propick6 — SQL/migrations/seeds run directly from Claude.
+
+### Phase 2.10 — Followers list + Messages module ✅ (2026-04-25)
+- **Followers list:** widened `follows` SELECT RLS so a user can also see rows where they are the followed_id (i.e. who follows ME). Privacy still intact — third parties can only see the count via `profiles.follower_count`. New `components/FollowersModal.tsx` opens from a clickable "X followers · View list" link on the user's own profile, with two tabs (Followers / Following). Following tab includes Unfollow buttons.
+- **Messages module (1-on-1 with real-time):**
+  - Schema: `conversations` (id, is_group=false, last_message_at), `conversation_members` (conv_id, user_id, last_read_at PK), `messages` (conv_id, sender_id, body, created_at). RLS uses a SECURITY DEFINER `is_conv_member(conv_id)` helper to avoid recursion when policies need to check membership.
+  - RPC `find_or_create_dm(other_user_id uuid) returns uuid` — idempotent: returns the existing 1-on-1 between auth.uid() and the target, or creates a new one.
+  - Trigger `on_message_insert` keeps `conversations.last_message_at` fresh.
+  - Realtime: `messages` added to the `supabase_realtime` publication so threads update live without polling.
+  - Migration: `supabase/2026-04-25_messages_and_followers_view.sql` (already applied via MCP).
+- **UI:**
+  - `/messages` — inbox sorted by last activity, shows other member's avatar/handle, last message snippet, relative time, and a green unread badge per conversation.
+  - `/messages/[id]` — thread view with auto-scroll-to-bottom, Realtime subscription on `messages.conversation_id=eq.X`, composer with Enter-to-send / Shift+Enter-newline, marks `last_read_at` on mount and 500ms after each new message arrives.
+  - `/u/[handle]` — Message button next to Follow on non-self profiles; calls `find_or_create_dm` and routes to the resulting `/messages/[id]`.
+  - `Nav.tsx` — new "Messages" link in both desktop and mobile nav, with a green unread-count badge that subscribes to message inserts in real time and refetches on every route change.
 
 ### Phase 2.9 — Capper search ✅ (2026-04-25)
 - New `components/SearchModal.tsx` — full-overlay modal with debounced (250ms) Supabase autocomplete: `profiles.handle ilike 'X%' order by handle asc limit 10`. ilike metachars (%, _, \\) sanitized from user input. Click result → `/u/[handle]`. Esc closes.
@@ -276,11 +290,12 @@ Mikes Pro Picks/
     │       ├── server.ts       (server components + route handlers)
     │       └── middleware.ts   (session-refresh helper)
     └── supabase/
-        ├── schema.sql                              ← base: profiles/picks/unlocks/transactions/advertisers + trigger
-        ├── pools_schema.sql                        ← pools module tables + RLS + leaderboard view
-        ├── seed_nhl_players.sql                    ← 52 NHL players
-        ├── 2026-04-24_pools_has_bracket.sql        ← migration: pools.has_bracket flag
-        ├── 2026-04-25_follows.sql                  ← migration: follows table + RLS + profiles.follower_count + trigger
+        ├── schema.sql                                       ← base: profiles/picks/unlocks/transactions/advertisers + trigger
+        ├── pools_schema.sql                                 ← pools module tables + RLS + leaderboard view
+        ├── seed_nhl_players.sql                             ← 52 NHL players
+        ├── 2026-04-24_pools_has_bracket.sql                 ← migration: pools.has_bracket flag
+        ├── 2026-04-25_follows.sql                           ← migration: follows table + RLS + profiles.follower_count + trigger
+        ├── 2026-04-25_messages_and_followers_view.sql       ← migration: conversations/conversation_members/messages + RLS + find_or_create_dm RPC + Realtime; widens follows SELECT
         └── (other seed files: demo cappers, demo picks, etc.)
 ```
 

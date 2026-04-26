@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import FollowersModal from "@/components/FollowersModal";
 
 type Profile = {
   id: string;
@@ -56,6 +57,12 @@ export default function ProfilePage({
   const [isFollowing, setIsFollowing] = useState(false);
   const [followBusy, setFollowBusy] = useState(false);
   const [signedIn, setSignedIn] = useState(false);
+
+  // Followers modal state (only relevant on isSelf)
+  const [followersOpen, setFollowersOpen] = useState(false);
+  const [followersInitialTab, setFollowersInitialTab] = useState<
+    "followers" | "following"
+  >("followers");
 
   // Report modal state
   const [reportOpen, setReportOpen] = useState(false);
@@ -175,6 +182,24 @@ export default function ProfilePage({
       : profile.roi <= -10 || (totalPicks > 0 && winPct <= 40)
       ? "cold"
       : "neutral";
+
+  async function onMessage() {
+    if (!profile) return;
+    if (!signedIn) {
+      router.push(`/signin?next=/u/${profile.handle}`);
+      return;
+    }
+    // find_or_create_dm is SECURITY DEFINER on the DB side and idempotent,
+    // so opening a DM with the same person twice always lands in the same convo.
+    const { data: convId, error } = await supabase.rpc("find_or_create_dm", {
+      other_user_id: profile.id,
+    });
+    if (error || !convId) {
+      console.error("Could not open DM:", error);
+      return;
+    }
+    router.push(`/messages/${convId}`);
+  }
 
   async function onShare() {
     const url = `${window.location.origin}/u/${profile!.handle}`;
@@ -336,10 +361,29 @@ export default function ProfilePage({
                 )}`}
             </div>
             <div className="text-xs text-muted mt-1">
-              <span className="font-semibold text-text">
-                {profile.follower_count.toLocaleString()}
-              </span>{" "}
-              follower{profile.follower_count === 1 ? "" : "s"}
+              {isSelf ? (
+                <button
+                  onClick={() => {
+                    setFollowersInitialTab("followers");
+                    setFollowersOpen(true);
+                  }}
+                  className="hover:text-text transition"
+                >
+                  <span className="font-semibold text-text">
+                    {profile.follower_count.toLocaleString()}
+                  </span>{" "}
+                  follower{profile.follower_count === 1 ? "" : "s"}
+                  <span className="text-muted/60"> · </span>
+                  <span className="underline">View list</span>
+                </button>
+              ) : (
+                <>
+                  <span className="font-semibold text-text">
+                    {profile.follower_count.toLocaleString()}
+                  </span>{" "}
+                  follower{profile.follower_count === 1 ? "" : "s"}
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -353,23 +397,33 @@ export default function ProfilePage({
             >
               Edit account
             </Link>
-          ) : isFollowing ? (
-            <button
-              onClick={onFollow}
-              disabled={followBusy}
-              className="group border border-green text-green hover:bg-hot/10 hover:border-hot hover:text-hot font-semibold px-4 py-2 rounded-full text-sm transition disabled:opacity-60"
-            >
-              <span className="group-hover:hidden">✓ Following</span>
-              <span className="hidden group-hover:inline">Unfollow</span>
-            </button>
           ) : (
-            <button
-              onClick={onFollow}
-              disabled={followBusy}
-              className="bg-green text-bg font-semibold px-4 py-2 rounded-full text-sm shadow-glow disabled:opacity-60"
-            >
-              Follow
-            </button>
+            <>
+              {isFollowing ? (
+                <button
+                  onClick={onFollow}
+                  disabled={followBusy}
+                  className="group border border-green text-green hover:bg-hot/10 hover:border-hot hover:text-hot font-semibold px-4 py-2 rounded-full text-sm transition disabled:opacity-60"
+                >
+                  <span className="group-hover:hidden">✓ Following</span>
+                  <span className="hidden group-hover:inline">Unfollow</span>
+                </button>
+              ) : (
+                <button
+                  onClick={onFollow}
+                  disabled={followBusy}
+                  className="bg-green text-bg font-semibold px-4 py-2 rounded-full text-sm shadow-glow disabled:opacity-60"
+                >
+                  Follow
+                </button>
+              )}
+              <button
+                onClick={onMessage}
+                className="border border-border hover:border-green hover:text-green text-text font-semibold px-4 py-2 rounded-full text-sm transition"
+              >
+                Message
+              </button>
+            </>
           )}
           <button
             onClick={onShare}
@@ -511,6 +565,16 @@ export default function ProfilePage({
             Report this user
           </button>
         </div>
+      )}
+
+      {/* Followers / Following modal — only renders for self profile */}
+      {isSelf && (
+        <FollowersModal
+          open={followersOpen}
+          onClose={() => setFollowersOpen(false)}
+          userId={profile.id}
+          initialTab={followersInitialTab}
+        />
       )}
 
       {/* Report modal */}
