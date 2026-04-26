@@ -404,17 +404,41 @@ export default function PickPage() {
           />
         </div>
 
-        <div>
-          <label className="text-xs uppercase tracking-wider text-muted">
-            Your pick
-          </label>
-          <input
-            value={selection}
-            onChange={(e) => setSelection(e.target.value)}
-            placeholder="e.g. Celtics -4.5"
-            className="mt-2 w-full bg-panel2 border border-border rounded-lg px-3 py-2 text-sm focus:border-green outline-none"
-          />
-        </div>
+        {/* Your pick — for ML with a selected game, the two side buttons above
+            ARE the pick (no free-text needed; prevents typing 'banana'). For
+            every other case (non-ML, or ML with a manually-typed matchup) we
+            still show the free-text input. */}
+        {willAutoGrade ? (
+          <div>
+            <label className="text-xs uppercase tracking-wider text-muted">
+              Your pick
+            </label>
+            <div className="mt-2 px-3 py-2 rounded-lg bg-green/10 border border-green/40 text-sm text-green font-semibold">
+              {selection}
+            </div>
+          </div>
+        ) : type === "ML" && selectedGame ? (
+          <div>
+            <label className="text-xs uppercase tracking-wider text-muted">
+              Your pick
+            </label>
+            <div className="mt-2 px-3 py-2 rounded-lg bg-panel2 border border-dashed border-border text-sm text-muted italic">
+              Tap a team above to lock in your pick.
+            </div>
+          </div>
+        ) : (
+          <div>
+            <label className="text-xs uppercase tracking-wider text-muted">
+              Your pick
+            </label>
+            <input
+              value={selection}
+              onChange={(e) => setSelection(e.target.value)}
+              placeholder="e.g. Celtics -4.5"
+              className="mt-2 w-full bg-panel2 border border-border rounded-lg px-3 py-2 text-sm focus:border-green outline-none"
+            />
+          </div>
+        )}
 
         {submitError && (
           <div className="rounded-md border border-hot/40 bg-hot/10 p-2 text-xs text-hot">
