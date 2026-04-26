@@ -65,21 +65,40 @@ export default function MessagesInboxPage() {
         .in("id", convIds)
         .order("last_message_at", { ascending: false });
 
-      // 3. The OTHER member of each conversation, joined to their profile.
-      const { data: otherMembersRaw } = await supabase
+      // 3. The OTHER member of each conversation. Fetched in 2 steps because
+      //    conversation_members.user_id has its FK on auth.users (not profiles),
+      //    so PostgREST can't auto-embed profiles via the join syntax.
+      const { data: otherMemberRows } = await supabase
         .from("conversation_members")
-        .select(
-          "conversation_id, profile:profiles!inner(id, handle, display_name)"
-        )
+        .select("conversation_id, user_id")
         .in("conversation_id", convIds)
         .neq("user_id", user.id);
 
-      const otherByConv = new Map<string, OtherMember>();
-      for (const m of (otherMembersRaw ?? []) as unknown as Array<{
+      const otherUserIdByConv = new Map<string, string>();
+      const otherUserIds: string[] = [];
+      for (const m of (otherMemberRows ?? []) as Array<{
         conversation_id: string;
-        profile: OtherMember;
+        user_id: string;
       }>) {
-        otherByConv.set(m.conversation_id, m.profile);
+        otherUserIdByConv.set(m.conversation_id, m.user_id);
+        otherUserIds.push(m.user_id);
+      }
+
+      const profileById = new Map<string, OtherMember>();
+      if (otherUserIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from("profiles")
+          .select("id, handle, display_name")
+          .in("id", otherUserIds);
+        for (const p of (profiles ?? []) as OtherMember[]) {
+          profileById.set(p.id, p);
+        }
+      }
+
+      const otherByConv = new Map<string, OtherMember>();
+      for (const [convId, uid] of otherUserIdByConv.entries()) {
+        const profile = profileById.get(uid);
+        if (profile) otherByConv.set(convId, profile);
       }
 
       // 4. Recent messages (descending) so we can take the head per conv as

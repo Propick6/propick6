@@ -62,26 +62,33 @@ export default function ConversationPage({
 
       // Find the OTHER member for the header. RLS lets us see all members of
       // conversations we belong to; if we get nothing back we don't have access.
-      const { data: members } = await supabase
+      // We fetch in two steps because conversation_members.user_id has its FK
+      // on auth.users (not profiles), so PostgREST can't auto-embed profiles.
+      const { data: memberRows, error: membersErr } = await supabase
         .from("conversation_members")
-        .select(
-          "user_id, profile:profiles!inner(id, handle, display_name)"
-        )
+        .select("user_id")
         .eq("conversation_id", conversationId);
 
-      if (!members || members.length === 0) {
+      if (membersErr || !memberRows || memberRows.length === 0) {
         if (cancelled) return;
         setForbidden(true);
         setLoading(false);
         return;
       }
 
-      const otherMember = (members as unknown as Array<{
-        user_id: string;
-        profile: OtherMember;
-      }>).find((m) => m.user_id !== user.id);
-      if (cancelled) return;
-      setOther(otherMember?.profile ?? null);
+      const otherUserId = (memberRows as Array<{ user_id: string }>)
+        .map((m) => m.user_id)
+        .find((id) => id !== user.id);
+
+      if (otherUserId) {
+        const { data: otherProfile } = await supabase
+          .from("profiles")
+          .select("id, handle, display_name")
+          .eq("id", otherUserId)
+          .maybeSingle();
+        if (cancelled) return;
+        setOther((otherProfile as OtherMember | null) ?? null);
+      }
 
       // Initial messages.
       const { data: msgs } = await supabase
