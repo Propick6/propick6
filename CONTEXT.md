@@ -1,5 +1,5 @@
 # Pro Pick 6 — Project Context File
-*Last updated: April 25, 2026 (Token rename, leaderboard, PWA, Follow, +Pick wired with ESPN, Capper search, Followers list modal, Real-time Messages module)*
+*Last updated: April 25, 2026 (above + ML pick auto-grading via grade-picks Edge Function on pg_cron — code shipped, awaits MCP-on-Propick6 to apply DB pieces)*
 
 ---
 
@@ -133,6 +133,15 @@ Platform nets:    ~$1.85 per unlock
 - Leaderboard handles + pool owner/entry handles link to `/u/[handle]`.
 - Report-user flow: `reports` table with RLS + Report modal on profile. Reports write to DB. **Admin review page + email notifications still TODO.**
 - Supabase MCP now authorized for Propick6 — SQL/migrations/seeds run directly from Claude.
+
+### Phase 2.11 — Pick auto-grading (ML / moneyline only) ✅ code, ⏳ pending DB apply (2026-04-25)
+- **Schema add (`supabase/2026-04-25_pick_grading.sql`):** picks gets `external_game_id`, `pick_side` ('home'|'away'), `commences_at`. New trigger `handle_pick_graded()` fires on `picks AFTER UPDATE`: when result transitions from 'pending' → win/loss/push, increments `profiles.wins/losses/pushes` for that seller. Reverse transitions are NOT handled (forward-only) — backfill script if we ever need correction UX.
+- **Edge Function (`supabase/functions/grade-picks/index.ts`):** Deno function. Pulls pending picks where `external_game_id IS NOT NULL` and `commences_at < now() - 3h`; groups by sport+game; calls ESPN's `/summary?event={id}` per game; if `state === 'post'` and `completed`, picks the winning side (prefers ESPN's `winner: true` flag, falls back to score comparison); marks each pick `win`/`loss`/`push`. Idempotent — only updates rows still in `pending`. Deployed with `verify_jwt: false` so pg_cron can call it without auth (safe — function only acts on pending picks).
+- **Cron (`supabase/2026-04-25_pick_grading_cron.sql`):** enables `pg_cron` + `pg_net` extensions, schedules `grade-picks-every-15min` (cron `*/15 * * * *`) which fire-and-forget POSTs to the Edge Function URL.
+- **+Pick form changes:** when a game is selected from the picker AND pick_type=ML, a "Who wins?" section appears with two team buttons. Clicking sets `pick_side` and auto-fills `selection` with `{Team} ML`. Submit captures `external_game_id`, `commences_at`, `pick_side`. Inline status line tells the user whether the pick will auto-grade.
+- **/stats hides stale pending:** picks with `result=pending` and `pick_date` older than 3 days are hidden from history (legacy free-text picks that'll never resolve).
+- **Apply order (when MCP is on Propick6):** apply pick_grading.sql → deploy Edge Function → apply pick_grading_cron.sql.
+- **Out of scope this round:** Spread / O/U / Prop / Parlay / Futures grading (need an odds + lines provider). ROI grading (needs odds for stake/return calc). Reverse transitions / manual override UX.
 
 ### Phase 2.10 — Followers list + Messages module ✅ (2026-04-25)
 - **Followers list:** widened `follows` SELECT RLS so a user can also see rows where they are the followed_id (i.e. who follows ME). Privacy still intact — third parties can only see the count via `profiles.follower_count`. New `components/FollowersModal.tsx` opens from a clickable "X followers · View list" link on the user's own profile, with two tabs (Followers / Following). Following tab includes Unfollow buttons.
@@ -296,6 +305,9 @@ Mikes Pro Picks/
         ├── 2026-04-24_pools_has_bracket.sql                 ← migration: pools.has_bracket flag
         ├── 2026-04-25_follows.sql                           ← migration: follows table + RLS + profiles.follower_count + trigger
         ├── 2026-04-25_messages_and_followers_view.sql       ← migration: conversations/conversation_members/messages + RLS + find_or_create_dm RPC + Realtime; widens follows SELECT
+        ├── 2026-04-25_pick_grading.sql                      ← migration: picks.external_game_id + pick_side + commences_at + handle_pick_graded trigger
+        ├── 2026-04-25_pick_grading_cron.sql                 ← pg_cron schedule that hits the grade-picks Edge Function every 15 min
+        ├── functions/grade-picks/index.ts                   ← Edge Function: grades pending ML picks against ESPN final scores
         └── (other seed files: demo cappers, demo picks, etc.)
 ```
 

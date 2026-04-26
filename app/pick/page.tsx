@@ -31,10 +31,15 @@ export default function PickPage() {
   const [matchup, setMatchup] = useState("");
   const [selection, setSelection] = useState("");
 
-  // Game picker state
+  // Game picker state — keep the FULL game so we can show team names
+  // for the "Who wins?" picker on ML picks.
   const [games, setGames] = useState<EspnGame[]>([]);
   const [gamesLoading, setGamesLoading] = useState(false);
-  const [selectedGameId, setSelectedGameId] = useState<string | null>(null);
+  const [selectedGame, setSelectedGame] = useState<EspnGame | null>(null);
+
+  // ML auto-grading: which side did the user pick? Only meaningful when
+  // pick_type=ML AND a game is selected from the picker.
+  const [pickSide, setPickSide] = useState<"home" | "away" | null>(null);
 
   // Submit state
   const [submitting, setSubmitting] = useState(false);
@@ -67,7 +72,8 @@ export default function PickPage() {
 
   // 2. Fetch games whenever league changes (only for ESPN-supported leagues)
   useEffect(() => {
-    setSelectedGameId(null);
+    setSelectedGame(null);
+    setPickSide(null);
     if (!isEspnSupported(sport)) {
       setGames([]);
       setGamesLoading(false);
@@ -94,9 +100,28 @@ export default function PickPage() {
   }, [sport]);
 
   function selectGame(g: EspnGame) {
-    setSelectedGameId(g.id);
+    setSelectedGame(g);
     setMatchup(g.matchup);
+    setPickSide(null); // changing the game wipes any prior side selection
   }
+
+  function selectType(t: (typeof types)[number]) {
+    setType(t);
+    // pick_side is only meaningful for ML; reset it whenever type changes.
+    setPickSide(null);
+  }
+
+  function selectSide(side: "home" | "away") {
+    if (!selectedGame) return;
+    setPickSide(side);
+    // Auto-fill the human-readable selection so the pick still reads naturally
+    // in the Feed / track record. User can edit it after if they want.
+    const team = side === "home" ? selectedGame.homeTeam : selectedGame.awayTeam;
+    setSelection(`${team} ML`);
+  }
+
+  // True when we have all the structured fields to auto-grade this pick later.
+  const willAutoGrade = !!selectedGame && type === "ML" && !!pickSide;
 
   async function submit() {
     if (!userId) return;
@@ -106,14 +131,26 @@ export default function PickPage() {
     setSubmitting(true);
     setSubmitError(null);
 
-    const { error } = await supabase.from("picks").insert({
+    // Build the row. external_game_id + commences_at are only set when the
+    // user picked a game from the ESPN picker (so the grader can find it).
+    // pick_side is only set when this is an ML pick with a side chosen.
+    const row: Record<string, unknown> = {
       seller_id: userId,
       sport,
       pick_type: type,
       matchup: matchup.trim(),
       selection: selection.trim(),
       // pick_date defaults to current_date in Postgres; result defaults to 'pending'.
-    });
+    };
+    if (selectedGame) {
+      row.external_game_id = selectedGame.id;
+      row.commences_at = selectedGame.startsAt;
+    }
+    if (type === "ML" && pickSide) {
+      row.pick_side = pickSide;
+    }
+
+    const { error } = await supabase.from("picks").insert(row);
 
     if (error) {
       setSubmitError(error.message);
@@ -124,7 +161,8 @@ export default function PickPage() {
     setSubmittedToday((n) => n + 1);
     setMatchup("");
     setSelection("");
-    setSelectedGameId(null);
+    setSelectedGame(null);
+    setPickSide(null);
     setJustPosted(true);
     setTimeout(() => setJustPosted(false), 2000);
     setSubmitting(false);
@@ -233,7 +271,7 @@ export default function PickPage() {
             {types.map((t) => (
               <button
                 key={t}
-                onClick={() => setType(t)}
+                onClick={() => selectType(t)}
                 className={`px-3 py-1 rounded-full text-sm ${
                   type === t
                     ? "bg-green text-bg font-semibold"
@@ -269,7 +307,7 @@ export default function PickPage() {
                       {dateLabel}
                     </div>
                     {dayGames.map((g) => {
-                      const isSelected = selectedGameId === g.id;
+                      const isSelected = selectedGame?.id === g.id;
                       const isLive = g.state === "in";
                       const isFinal = g.state === "post";
                       return (
@@ -314,6 +352,40 @@ export default function PickPage() {
           </div>
         )}
 
+        {/* ML side picker — only when type=ML AND a game from the picker is selected */}
+        {type === "ML" && selectedGame && (
+          <div>
+            <label className="text-xs uppercase tracking-wider text-muted">
+              Who wins?
+            </label>
+            <div className="grid grid-cols-2 gap-2 mt-2">
+              {(["away", "home"] as const).map((side) => {
+                const team =
+                  side === "away" ? selectedGame.awayTeam : selectedGame.homeTeam;
+                const isPicked = pickSide === side;
+                return (
+                  <button
+                    key={side}
+                    onClick={() => selectSide(side)}
+                    className={`p-3 rounded-lg border text-left transition ${
+                      isPicked
+                        ? "bg-green/15 border-green text-green"
+                        : "bg-panel2 border-border hover:border-green"
+                    }`}
+                  >
+                    <div className="text-[10px] uppercase tracking-wider text-muted">
+                      {side}
+                    </div>
+                    <div className="font-semibold truncate text-sm mt-0.5">
+                      {team}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         <div>
           <label className="text-xs uppercase tracking-wider text-muted">
             Matchup
@@ -322,7 +394,10 @@ export default function PickPage() {
             value={matchup}
             onChange={(e) => {
               setMatchup(e.target.value);
-              setSelectedGameId(null); // typing breaks the link to a selected game
+              // Hand-editing breaks the link to the selected game (and therefore
+              // any ML side selection — the picker no longer reflects this matchup).
+              setSelectedGame(null);
+              setPickSide(null);
             }}
             placeholder="e.g. Lakers @ Celtics"
             className="mt-2 w-full bg-panel2 border border-border rounded-lg px-3 py-2 text-sm focus:border-green outline-none"
@@ -353,6 +428,25 @@ export default function PickPage() {
             {MIN_PICKS}.
           </div>
         )}
+
+        {/* Tell the user whether this pick will auto-grade. Helps them
+            understand why some picks resolve themselves and others don't. */}
+        <div className="text-[11px] text-muted">
+          {willAutoGrade ? (
+            <span className="text-green">
+              ✓ This pick will auto-grade after the game ends.
+            </span>
+          ) : type === "ML" && selectedGame && !pickSide ? (
+            <span>
+              Pick a side above to enable auto-grading.
+            </span>
+          ) : (
+            <span>
+              Manual entries (no game selected, or non-ML types) won&apos;t
+              auto-grade yet. Spreads + odds coming in a future round.
+            </span>
+          )}
+        </div>
 
         <button
           onClick={submit}

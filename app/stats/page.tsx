@@ -56,7 +56,7 @@ export default function StatsPage() {
         .maybeSingle();
       setProfile(prof as Profile | null);
 
-      // Pick history — most recent first, includes pending.
+      // Pick history — most recent first.
       // Grab one extra so we know if there are more beyond HISTORY_LIMIT.
       const { data: rows } = await supabase
         .from("picks")
@@ -66,9 +66,21 @@ export default function StatsPage() {
         .order("created_at", { ascending: false })
         .limit(HISTORY_LIMIT + 1);
 
-      const list = (rows as Pick[] | null) ?? [];
-      setMoreAvailable(list.length > HISTORY_LIMIT);
-      setPicks(list.slice(0, HISTORY_LIMIT));
+      // Filter out stale pending picks (>3 days old). These are picks that
+      // were posted before structured grading existed (free-text matchup, no
+      // external_game_id) — they'll never resolve, so don't clutter the view.
+      const STALE_DAYS = 3;
+      const staleCutoff = new Date();
+      staleCutoff.setHours(0, 0, 0, 0);
+      staleCutoff.setDate(staleCutoff.getDate() - STALE_DAYS);
+      const cutoffStr = staleCutoff.toISOString().slice(0, 10);
+
+      const filtered = ((rows as Pick[] | null) ?? []).filter(
+        (p) => !(p.result === "pending" && p.pick_date < cutoffStr)
+      );
+
+      setMoreAvailable(filtered.length > HISTORY_LIMIT);
+      setPicks(filtered.slice(0, HISTORY_LIMIT));
     }
     load();
   }, []);
